@@ -305,7 +305,11 @@ class Controller(Singleton):
 
     def __repr__(self):
         return "Controller"
-    
+
+    def __hash__(self):
+        return id(self)
+
+
 class match(Filter):
     """
     Match on all specified fields.
@@ -516,6 +520,9 @@ class modify(Policy):
     def __eq__(self, other):
         return ( isinstance(other, modify)
            and (self.map == other.map) )
+
+    def __hash__(self):
+        return id(self)
 
 class _modify(modify):
     def __init__(self, *args, **kwargs):
