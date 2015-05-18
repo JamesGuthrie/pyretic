@@ -23,7 +23,7 @@ import ovs.util
 
 
 vlog = ovs.vlog.Vlog("unixctl_client")
-strtypes = types.StringTypes
+strtypes = str
 
 
 class UnixctlClient(object):

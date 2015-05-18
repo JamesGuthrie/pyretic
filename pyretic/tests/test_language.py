@@ -86,7 +86,7 @@ def test_most_specific_prefix_matching():
                     passthrough
                 )
             ).compile()
-    print c1
+    print(c1)
     assert c1.rules != [
         Rule(match(srcip='10.0.0.1'), [modify(outport=2)]),
         Rule(match(srcip='10.0.0.0/16'), [modify(outport=3)]),
@@ -150,56 +150,56 @@ def test_sequencing_drop_fwd():
     c1 = Classifier([Rule(identity, [drop])])
     c2 = Classifier([Rule(identity, [modify(outport=1)])])
     c3 = c1 >> c2
-    print c3
+    print(c3)
     assert c3.rules == [Rule(identity, [drop])]
 
 def test_sequencing_fwd_drop():
     c1 = Classifier([Rule(identity, [drop])])
     c2 = Classifier([Rule(identity, [modify(outport=1)])])
     c3 = c2 >> c1
-    print c3
+    print(c3)
     assert c3.rules == [Rule(identity, [drop])]
 
 def test_sequencing_fwd_fwd():
     c1 = Classifier([Rule(identity, [modify(outport=1)])])
     c2 = Classifier([Rule(identity, [modify(outport=2)])])
     c3 = c1 >> c2
-    print c3
+    print(c3)
     assert c3.rules == [Rule(identity, [modify(outport=2)])]
 
 def test_sequencing_fwd_fwd_shadow():
     c1 = Classifier([Rule(identity, [modify(outport=1)])])
     c2 = Classifier([Rule(identity, [modify(outport=2)]), Rule(identity, [modify(outport=3)])])
     c3 = c1 >> c2
-    print c3
+    print(c3)
     assert c3.rules == [Rule(identity, [modify(outport=2)])]
 
 def test_sequencing_fwd_fwd_fwd_1():
     c1 = Classifier([Rule(identity, [modify(outport=1)])])
     c2 = Classifier([Rule(identity, [modify(outport=2), modify(outport=3)])])
     c3 = c1 >> c2
-    print c3
+    print(c3)
     assert c3.rules == [Rule(identity, [modify(outport=2), modify(outport=3)])]
 
 def test_sequencing_fwd_fwd_fwd_2():
     c1 = Classifier([Rule(identity, [modify(outport=1), modify(outport=2)])])
     c2 = Classifier([Rule(identity, [modify(outport=3)])])
     c3 = c1 >> c2
-    print c3
+    print(c3)
     assert c3.rules == [Rule(identity, [modify(outport=3), modify(outport=3)])]
 
 def test_sequencing_mod_fwd():
     c1 = Classifier([Rule(identity, [modify(dstip='10.0.0.1', dstport=22)])])
     c2 = Classifier([Rule(match(dstip='10.0.0.1'), [modify(outport=3)])])
     c3 = c1 >> c2
-    print c3
+    print(c3)
     assert c3.rules == [Rule(identity, [modify(dstip='10.0.0.1', dstport=22, outport=3)])]
 
 def test_sequencing_fwd_mod():
     c1 = Classifier([Rule(identity, [modify(outport=3)])])
     c2 = Classifier([Rule(match(srcip='192.168.1.1'), [modify(srcip='10.0.0.1', srcport=1)])])
     c3 = c1 >> c2
-    print c3
+    print(c3)
     assert c3.rules == [
         Rule(match(srcip='192.168.1.1'), [modify(srcip='10.0.0.1', srcport=1, outport=3)]),
         Rule(identity, [drop]) ]
@@ -208,7 +208,7 @@ def test_sequencing_match_match():
     c1 = Classifier([Rule(match(inport=1), [identity]), Rule(true, [drop])])
     c2 = Classifier([Rule(match(outport=2), [identity]), Rule(true, [drop])])
     c3 = c1 >> c2
-    print c3
+    print(c3)
     assert c3.rules == [
         Rule(match(inport=1, outport=2), [identity]),
         Rule(match(inport=1), [drop]),
@@ -232,7 +232,7 @@ def test_intersect_1():
 def test_nested_1():
     pol = match(inport=1) >> match(outport=2) >> modify(outport=3)
     classifier = pol.compile()
-    print classifier
+    print(classifier)
     assert classifier.rules == [
         Rule(match(inport=1, outport=2), [modify(outport=3)]),
         Rule(match(inport=1), [drop]),
@@ -260,7 +260,7 @@ def test_if_compilation_3():
 def test_if_compilation_4():
     pol = if_(match(inport=2), modify(outport=1), match(inport=4) >> modify(outport=2))
     classifier = pol.compile()
-    print classifier
+    print(classifier)
     assert classifier.rules == [
         Rule(match(inport=2), [modify(outport=1)]),
         Rule(match(inport=4), [modify(outport=2)]),
@@ -269,7 +269,7 @@ def test_if_compilation_4():
 def test_if_compilation_5():
     pol = if_(match(inport=2), modify(outport=1), modify(outport=3) + modify(outport=2))
     classifier = pol.compile()
-    print classifier
+    print(classifier)
     assert classifier.rules == [
         Rule(match(inport=2), [modify(outport=1)]),
         Rule(true, [modify(outport=3), modify(outport=2)]) ]
@@ -288,8 +288,8 @@ def test_if_compilation_x():
               match(dstip=p),
               modify(dstip=ip1)))
     classifier = pol.compile()
-    print pol.policy
-    print classifier
+    print(pol.policy)
+    print(classifier)
     assert classifier.rules == [
         Rule(match(srcip=ip1), [modify(srcip=p)]),
         Rule(match(dstip=p), [modify(dstip=ip1)]),
@@ -439,16 +439,16 @@ def test_fwd_compilation():
 def test_match_fwd():
     pol = match(inport=1) >> fwd(2)
     classifier = pol.compile()
-    print classifier
+    print(classifier)
     assert classifier.rules == [
         Rule(match(inport=1), [modify(outport=2)]),
         Rule(identity, [drop]) ]
 
 def test_xfwd_compilation():
     pol = xfwd(1)
-    print pol.policy
+    print(pol.policy)
     classifier = pol.compile()
-    print classifier.rules
+    print(classifier.rules)
     assert classifier.rules == [
         Rule(match(inport=1), [drop]),
         Rule(identity, [modify(outport=1)]) ]
@@ -465,8 +465,8 @@ def test_flood_compilation():
     pol.set_network(FakeNetwork(topo))
     
     classifier = pol.compile()
-    print pol.policy
-    print classifier
+    print(pol.policy)
+    print(classifier)
     assert classifier.rules == [
         Rule(match(switch='s1', inport=1), [modify(outport=2)]),
         Rule(match(switch='s1', inport=2), [modify(outport=1)]),
@@ -478,15 +478,15 @@ def test_flood_compilation():
 def test_remove_shadow_cover_single():
     c = Classifier([Rule(identity, [drop]), Rule(identity, [drop])])
     c = c.remove_shadowed_cover_single()
-    print c
+    print(c)
     assert c.rules == [Rule(identity, [drop])]
 
 def test_optimize_bug_1():
     classifier = Classifier([
         Rule(match(inport=1), [modify(outport=1)]),
         Rule(identity, [drop]) ])
-    print 'classifier:'
-    print classifier
-    print 'classifier.optimize():'
-    print classifier.optimize()
+    print('classifier:')
+    print(classifier)
+    print('classifier.optimize():')
+    print(classifier.optimize())
     assert classifier == classifier.optimize()

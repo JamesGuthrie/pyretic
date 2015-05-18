@@ -6,6 +6,7 @@ from ryu.lib        import addrconv
 
 from pyretic.core import util
 from pyretic.core.network import IPAddr, EthAddr
+import collections
 
 __all__ = ['of_field', 'of_fields', 'get_packet_processor', 'Packet']
 _field_list = dict()
@@ -72,7 +73,7 @@ ethertype_packets = {
 def build_empty_packet(ethertype, proto=None):
     if ethertype:
         pkt = ethertype_packets[ethertype]
-        if proto is not None and not callable(pkt): pkt = pkt[proto]
+        if proto is not None and not isinstance(pkt, collections.Callable): pkt = pkt[proto]
 
 
         return pkt()
@@ -99,7 +100,7 @@ class Processor(object):
 
     def compile(self):
         fields = of_fields()
-        fields = [field() for _, field in fields.items()]
+        fields = [field() for _, field in list(fields.items())]
 
         validators         = { field.validator.__class__.__name__: dict() for field in fields }
 
@@ -110,7 +111,7 @@ class Processor(object):
 
         def extract_exclusive_headers(ryu_pkt, exclusive_groups):
                 headers = {}
-                for validator, fields in exclusive_groups.items():
+                for validator, fields in list(exclusive_groups.items()):
                     if not iter(fields).next().is_valid(ryu_pkt):
                         continue
 
@@ -123,7 +124,7 @@ class Processor(object):
 
         def pack_pyretic_headers(pyr_pkt, tmp_pkt, exclusive_groups):
                 headers = {}
-                for validator, fields in exclusive_groups.items():
+                for validator, fields in list(exclusive_groups.items()):
                     if not iter(fields).next().is_valid(pyr_pkt):
                         continue
 
@@ -140,7 +141,7 @@ class Processor(object):
 
             headers = {}
 
-            for key, exclusive_groups in validators.items():
+            for key, exclusive_groups in list(validators.items()):
                 headers.update( extract_exclusive_headers(ryu_pkt, exclusive_groups) )
 
             return headers
@@ -159,10 +160,10 @@ class Processor(object):
                 else:
                     return v
 
-            pyr_pkt = { h : convert(h, v) for h,v in pyr_pkt.items() }
+            pyr_pkt = { h : convert(h, v) for h,v in list(pyr_pkt.items()) }
 
 
-            for key, exclusive_groups in validators.items():
+            for key, exclusive_groups in list(validators.items()):
                 pack_pyretic_headers(pyr_pkt, pkt, exclusive_groups)
 
             pkt.serialize()
@@ -387,7 +388,7 @@ class VlanPcp(object):
             pkt.protocols.insert(1, vlan.vlan(ethertype=pkt.protocols[0].ethertype))
 
         gen = (protocol for protocol in pkt.protocols if protocol.__class__ == vlan.vlan)
-        vl = gen.next()
+        vl = next(gen)
         vl.pcp = pyr['vlan_pcp']
         pkt.protocols[0].ethertype = VLAN
 
@@ -410,7 +411,7 @@ class VlanID(object):
             pkt.protocols.insert(1, vlan.vlan(ethertype=pkt.protocols[0].ethertype))
 
         gen = (protocol for protocol in pkt.protocols if protocol.__class__ == vlan.vlan)
-        vl = gen.next()
+        vl = next(gen)
         vl.vid = pyr['vlan_id']
         pkt.protocols[0].ethertype = VLAN
 
@@ -493,7 +494,7 @@ class Packet(object):
         self.header = util.frozendict(state)
 
     def available_fields(self):
-        return self.header.keys()
+        return list(self.header.keys())
 
     def __eq__(self, other):
         return ( id(self) == id(other)
@@ -506,7 +507,7 @@ class Packet(object):
     def modifymany(self, d):
         add = {}
         delete = []
-        for k, v in d.items():
+        for k, v in list(d.items()):
             if v is None:
                 delete.append(k)
             else:
@@ -539,9 +540,9 @@ class Packet(object):
         fixed_fields['source']   = ['srcip', 'srcmac']
         fixed_fields['dest']     = ['dstip', 'dstmac']
         order = ['location','vlocation','source','dest']
-        all_fields = self.header.keys()
+        all_fields = list(self.header.keys())
         outer = []
-        size = max(map(len, self.header) or map(len, order) or [len('md5'),0]) + 3
+        size = max(list(map(len, self.header)) or list(map(len, order)) or [len('md5'),0]) + 3
         ### LOCATION, VLOCATION, SOURCE, and DEST - EACH ON ONE LINE
         for fields in order:
             inner = ["%s:%s" % (fields, " " * (size - len(fields)))]

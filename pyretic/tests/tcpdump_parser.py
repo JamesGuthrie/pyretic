@@ -53,7 +53,7 @@ if __name__ == '__main__':
     len_p = re.compile('length ([0-9]+)')
 
     f = open(file_name,'r')
-    for line in f.xreadlines():
+    for line in f:
         layers = layer_p.split(line)
         if len(layers) < 3:
             continue
@@ -82,4 +82,4 @@ if __name__ == '__main__':
             l2_byte_count += int(l2_len)
         l3_byte_count += int(l3_len)
 
-    print '(packet, byte) counts: [%d, %d]' % (packet_count,l2_byte_count)
+    print('(packet, byte) counts: [%d, %d]' % (packet_count,l2_byte_count))

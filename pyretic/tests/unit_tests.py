@@ -1,2 +1,2 @@
-from test_language import *
-from test_packet   import *
+from .test_language import *
+from .test_packet   import *

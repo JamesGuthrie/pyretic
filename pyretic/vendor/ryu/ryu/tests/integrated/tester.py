@@ -208,7 +208,7 @@ class TestFlowBase(app_manager.RyuApp):
 
     def ipv6_masked(self, ipv6_int, mask_int):
         return [x & y for (x, y) in
-                itertools.izip(ipv6_int, mask_int)]
+                zip(ipv6_int, mask_int)]
 
     def is_supported(self, t):
         return True

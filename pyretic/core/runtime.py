@@ -40,6 +40,7 @@ from multiprocessing import Process, Manager, RLock, Lock, Value, Queue, Conditi
 import logging, sys, time
 from datetime import datetime
 import copy
+from functools import reduce
 
 TABLE_MISS_PRIORITY = 0
 TABLE_START_PRIORITY = 60000
@@ -172,8 +173,8 @@ class Runtime(object):
                 self.bucket_triggered_policy_update = False
                     
         # send output of evaluation into the network
-        concrete_output = map(self.pyretic2concrete,output)
-        map(self.send_packet,concrete_output)
+        concrete_output = list(map(self.pyretic2concrete,output))
+        list(map(self.send_packet,concrete_output))
 
         self.packet_in_time += (time.time() - start_time)
         self.log.debug("handle_packet_in cumulative: %f %d"
@@ -199,7 +200,7 @@ class Runtime(object):
             # tag stale classifiers as invalid
             recompile_list = on_recompile_path_list(id(sub_pol),
                                                     self.policy)
-            map(lambda p: p.invalidate_classifier(), recompile_list)
+            list(map(lambda p: p.invalidate_classifier(), recompile_list))
 
             # if change was driven by a network update, flag
             if self.in_network_update:
@@ -310,7 +311,7 @@ class Runtime(object):
 
     def handle_path_change_dyn_pred(self, sub_pol, full_pol):
         recompile_list = on_recompile_path_list(id(sub_pol), full_pol)
-        map(lambda p: p.invalidate_classifier(), recompile_list)
+        list(map(lambda p: p.invalidate_classifier(), recompile_list))
         self.handle_path_change()
 
     def update_dynamic_sub_path_pols(self, path_pol):
@@ -485,7 +486,7 @@ class Runtime(object):
             :rtype: Classifier
             """
             return Classifier(Rule(rule.match,
-                                   filter(lambda a: a != identity,rule.actions))
+                                   [a for a in rule.actions if a != identity])
                               for rule in classifier.rules)
 
         def remove_path_buckets(classifier):
@@ -655,17 +656,17 @@ class Runtime(object):
                 (to_add, to_delete, to_modify, to_stay) = diff_lists
                 all_rules = to_add + to_delete + to_modify + to_stay
                 bucket_list = collect_buckets(all_rules)
-                map(lambda x: x.start_update(), bucket_list.values())
-                map(lambda x: update_rules_for_buckets(x, "add"), to_add)
-                map(lambda x: update_rules_for_buckets(x, "delete"), to_delete)
-                map(lambda x: update_rules_for_buckets(x, "stay"), to_stay)
-                map(lambda x: update_rules_for_buckets(x, "modify"), to_modify)
-                map(lambda x: x.add_pull_stats(self.pull_stats_for_bucket(x)),
-                    bucket_list.values())
-                map(lambda x: x.add_pull_existing_stats(
+                list(map(lambda x: x.start_update(), list(bucket_list.values())))
+                list(map(lambda x: update_rules_for_buckets(x, "add"), to_add))
+                list(map(lambda x: update_rules_for_buckets(x, "delete"), to_delete))
+                list(map(lambda x: update_rules_for_buckets(x, "stay"), to_stay))
+                list(map(lambda x: update_rules_for_buckets(x, "modify"), to_modify))
+                list(map(lambda x: x.add_pull_stats(self.pull_stats_for_bucket(x)),
+                    list(bucket_list.values())))
+                list(map(lambda x: x.add_pull_existing_stats(
                         self.pull_existing_stats_for_bucket(x)),
-                    bucket_list.values())
-                map(lambda x: x.finish_update(), bucket_list.values())
+                    list(bucket_list.values())))
+                list(map(lambda x: x.finish_update(), list(bucket_list.values())))
         
         def remove_buckets(diff_lists):
             """
@@ -681,8 +682,7 @@ class Runtime(object):
                 new_lst = []
                 for rule in lst:
                     (match,priority,acts,version) = rule
-                    new_acts = filter(lambda x: not isinstance(x, CountBucket),
-                                      acts)
+                    new_acts = [x for x in acts if not isinstance(x, CountBucket)]
                     if len(new_acts) < len(acts):
                         new_rule = (match, priority, new_acts, version, True)
                     else:
@@ -733,7 +733,7 @@ class Runtime(object):
                     elif pred == true:
                         return {}
                     elif isinstance(pred, match):
-                        concrete_match = { k:v for (k,v) in pred.map.items() }
+                        concrete_match = { k:v for (k,v) in list(pred.map.items()) }
                         net_to_str = util.network_to_string
                         for field in ['srcip', 'dstip']:
                             try:
@@ -746,7 +746,7 @@ class Runtime(object):
                     if a == Controller:
                         return {'outport' : OFPP_CONTROLLER}
                     elif isinstance(a,modify):
-                        return { k:v for (k,v) in a.map.iteritems() }
+                        return { k:v for (k,v) in a.map.items() }
                     else: # default
                         return a
                 m = concretize_match(rule.match)
@@ -756,7 +756,7 @@ class Runtime(object):
                 else:
                     return Rule(m,acts)
             crs = [concretize_rule_actions(r) for r in classifier.rules]
-            crs = filter(lambda cr: not cr is None,crs)
+            crs = [cr for cr in crs if not cr is None]
             return Classifier(crs)
 
         def check_OF_rules(classifier):
@@ -775,9 +775,7 @@ class Runtime(object):
                             raise TypeError('Non-compilable rule',str(r))  
             for r in classifier.rules:
                 r_minus_queries = Rule(r.match,
-                                       filter(lambda x:
-                                              not isinstance(x, Query),
-                                              r.actions))
+                                       [x for x in r.actions if not isinstance(x, Query)])
                 check_OF_rule_has_outport(r_minus_queries)
                 check_OF_rule_has_compilable_action_list(r_minus_queries)
             return Classifier(classifier.rules)
@@ -816,11 +814,10 @@ class Runtime(object):
 
             specialized_rules = []
             for rule in classifier.rules:
-                phys_actions = filter(lambda a: (not isinstance(a, CountBucket)
+                phys_actions = [a for a in rule.actions if (not isinstance(a, CountBucket)
                                                  and a['outport'] != OFPP_CONTROLLER
-                                                 and a['outport'] != OFPP_IN_PORT),
-                                      rule.actions)
-                outports_used = map(lambda a: a['outport'], phys_actions)
+                                                 and a['outport'] != OFPP_IN_PORT)]
+                outports_used = [a['outport'] for a in phys_actions]
                 if not 'inport' in rule.match:
                     # Add a modified rule for each of the outports_used
                     switch = rule.match['switch']
@@ -941,8 +938,7 @@ class Runtime(object):
             (versioned) classifier."""
             def different_actions(old_acts, new_acts):
                 def buckets_removed(acts):
-                    return filter(lambda a: not isinstance(a, CountBucket),
-                                  acts)
+                    return [a for a in acts if not isinstance(a, CountBucket)]
                 return buckets_removed(old_acts) != buckets_removed(new_acts)
 
             with self.old_rules_lock:
@@ -1154,7 +1150,7 @@ class Runtime(object):
         Returns a function that can be used by counting buckets to
         issue queries from the runtime."""
         def pull_bucket_stats():
-            preds = [me.match for me in bucket.matches.keys()]
+            preds = [me.match for me in list(bucket.matches.keys())]
             return self.pull_switches_for_preds(preds, bucket)
         return pull_bucket_stats
 
@@ -1163,7 +1159,7 @@ class Runtime(object):
         at least one rule that was already created in an earlier classifier.
         """
         def pull_existing_bucket_stats():
-            preds = [me.match for me,ms in bucket.matches.items() if ms.existing_rule]
+            preds = [me.match for me,ms in list(bucket.matches.items()) if ms.existing_rule]
             return self.pull_switches_for_preds(preds, bucket)
         return pull_existing_bucket_stats
 
@@ -1213,7 +1209,7 @@ class Runtime(object):
                 return val
 
         pyretic_packet = Packet(util.frozendict())
-        d = { h : convert(h,v) for (h,v) in packet.items() }
+        d = { h : convert(h,v) for (h,v) in list(packet.items()) }
         return pyretic_packet.modifymany(d)
 
     def pyretic2concrete(self,packet):
@@ -1240,7 +1236,7 @@ class Runtime(object):
             except:
                 pass
 
-        concrete_packet = dict(concrete_packet.items() + virtual_field.expand(headers).items())
+        concrete_packet = dict(list(concrete_packet.items()) + list(virtual_field.expand(headers).items()))
         concrete_packet['raw'] = get_packet_processor().pack(headers)
         return concrete_packet
 
@@ -1254,7 +1250,8 @@ class Runtime(object):
     def send_packet(self,concrete_packet):
         self.backend.send_packet(concrete_packet)
 
-    def install_rule(self,(concrete_pred,priority,action_list,cookie,notify)):
+    def install_rule(self, xxx_todo_changeme):
+        (concrete_pred,priority,action_list,cookie,notify) = xxx_todo_changeme
         self.log.debug(
             '|%s|\n\t%s\n\t%s\n' % (str(datetime.now()),
                 "sending openflow rule:",
@@ -1262,10 +1259,12 @@ class Runtime(object):
                  repr(action_list) + " " + repr(cookie))))
         self.backend.send_install(concrete_pred,priority,action_list,cookie,notify)
 
-    def modify_rule(self, (concrete_pred,priority,action_list,cookie,notify)):
+    def modify_rule(self, xxx_todo_changeme1):
+        (concrete_pred,priority,action_list,cookie,notify) = xxx_todo_changeme1
         self.backend.send_modify(concrete_pred,priority,action_list,cookie,notify)
 
-    def delete_rule(self,(concrete_pred,priority)):
+    def delete_rule(self, xxx_todo_changeme2):
+        (concrete_pred,priority) = xxx_todo_changeme2
         self.backend.send_delete(concrete_pred,priority)
 
     def send_barrier(self,switch):
@@ -1320,11 +1319,11 @@ class Runtime(object):
         if f == 'match':
             import ast
             val = ast.literal_eval(val)
-            return { g : self.ofp_convert(g,v) for g,v in val.items() }
+            return { g : self.ofp_convert(g,v) for g,v in list(val.items()) }
         if f == 'actions':
             import ast
             vals = ast.literal_eval(val)
-            return [ { g : self.ofp_convert(g,v) for g,v in val.items() }
+            return [ { g : self.ofp_convert(g,v) for g,v in list(val.items()) }
                      for val in vals ]
         if f in ['srcmac','dstmac']:
             return MAC(val)
@@ -1346,7 +1345,7 @@ class Runtime(object):
     def handle_flow_stats_reply(self, switch, flow_stats):
         self.log.info('received a flow stats reply from switch ' + str(switch))
         flow_stats = [ { f : self.ofp_convert(f,v)
-                         for (f,v) in flow_stat.items() }
+                         for (f,v) in list(flow_stat.items()) }
                        for flow_stat in flow_stats       ]
         flow_stats = sorted(flow_stats, key=lambda d: -d['priority'])
         self.log.debug(
@@ -1377,14 +1376,14 @@ class Runtime(object):
             """ Convert incoming flow stat matches into a form compatible with
             stored match entries. """
             new_dict = {}
-            for k,v in m.iteritems():
+            for k,v in m.items():
                 if not (k == 'srcip' or k == 'dstip'):
                     new_dict[k] = v
                 else:
                     new_dict[k] = str(v.ip)
             return new_dict
         flow_stat = { f : self.ofp_convert(f,v)
-                      for (f,v) in flow_stat_dict.items() }
+                      for (f,v) in list(flow_stat_dict.items()) }
         self.log.debug(
             '|%s|\n\t%s\n\t%s' %
             (str(datetime.now()), "flow removed message: rule:",
@@ -1405,7 +1404,7 @@ class Runtime(object):
                     self.log.debug("Total packets removed: %d" %
                                    self.total_packets_removed)
                 self.log.debug('Printing global structure for deleted rules:')
-                for k,v in self.global_outstanding_deletes.iteritems():
+                for k,v in self.global_outstanding_deletes.items():
                     self.log.debug(str(k) + " : " + str(v))
             if match_entry in self.global_outstanding_deletes:
                 if f['packet_count'] > 0:
@@ -1476,7 +1475,7 @@ class Runtime(object):
 @util.cached
 def extended_values_from(packet):
     extended_values = {}
-    for k, v in packet.header.items():
+    for k, v in list(packet.header.items()):
         if ((k not in basic_headers + content_headers + location_headers) and
             (not v is None)):
             extended_values[k] = v
@@ -1557,7 +1556,7 @@ class ConcreteNetwork(Network):
         self.log.info("OpenFlow switch %s disconnected" % switch)
         self.debug_log.debug("handle_switch_parts")
         # REMOVE ALL ASSOCIATED LINKS
-        for port_no in self.next_topo.node[switch]["ports"].keys():
+        for port_no in list(self.next_topo.node[switch]["ports"].keys()):
             self.remove_associated_link(Location(switch,port_no))
         self.next_topo.remove_node(switch)
         self.debug_log.debug(str(self.next_topo))
@@ -1665,9 +1664,9 @@ class ConcreteNetwork(Network):
             pt1 = self.next_topo.node[s1]["ports"][p_no1].port_type 
             pt2 = self.next_topo.node[s2]["ports"][p_no2].port_type 
             if pt1 != pt2:
-                print "MISMATCH ",
-                print pt1
-                print pt2
+                print("MISMATCH ", end=' ')
+                print(pt1)
+                print(pt2)
             self.next_topo.add_edge(s1, s2, {s1: p_no1, s2: p_no2, 'type' : pt1})
             
         # IF REACHED, WE'VE REMOVED AN EDGE, OR ADDED ONE, OR BOTH
@@ -1705,10 +1704,10 @@ class virtual_field:
     @classmethod
     def compress(cls,fields):
         virtual_fields = virtual_field.fields
-        vf_names       = virtual_fields.keys()
+        vf_names       = list(virtual_fields.keys())
 
         def vhs_to_num(fields):
-            vheaders = dict(filter(lambda a: a[0] in vf_names, fields.iteritems()))
+            vheaders = dict([a for a in iter(fields.items()) if a[0] in vf_names])
             # If we there are no virtual_fields specified we wouldn't want to match on them at all
             # Just return -1 so that calling function knows that the predicate doesn't have any virtual
             # fields on it
@@ -1718,7 +1717,7 @@ class virtual_field:
                 if n not in vheaders:
                     vheaders[n] = None
             ret,temp = 0,1
-            for n,vf in virtual_fields.iteritems():
+            for n,vf in virtual_fields.items():
                 ret *= temp
                 ret += vf.index(vheaders[n])
                 temp = vf.cardinality
@@ -1732,7 +1731,7 @@ class virtual_field:
             return {}
 
         virtual_fields = virtual_field.fields
-        vf_names       = virtual_fields.keys()
+        vf_names       = list(virtual_fields.keys())
         num = fields['vlan_pcp'] << 12 + fields['vlan_id']
 
         def num_to_vhs(num):
@@ -1741,7 +1740,7 @@ class virtual_field:
             # fields on it
             vfs = {}
             tmp = num
-            for n,vf in reversed(virtual_fields.items()):
+            for n,vf in reversed(list(virtual_fields.items())):
                 val    = tmp % vf.cardinality
                 tmp    = tmp / vf.cardinality
                 vfs[n] = vf.value(val)

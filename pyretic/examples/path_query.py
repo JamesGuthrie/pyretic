@@ -89,7 +89,7 @@ def query_func(bucket, interval):
         output = str(datetime.now())
         output += " Pulling stats for bucket " + repr(bucket)
         # output += bucket.get_matches()
-        print output
+        print(output)
         bucket.pull_stats()
         time.sleep(interval)
 
@@ -137,23 +137,23 @@ def query_callback(test_num):
         def print_predwise_entries():
             pkt_counts  = ac.predwise_pkt_count
             byte_counts = ac.predwise_byte_count
-            for pred in pkt_counts.keys():
-                assert pred in byte_counts.keys()
-                print "Bucket %s %s counts: [%d, %d]" % (
+            for pred in list(pkt_counts.keys()):
+                assert pred in list(byte_counts.keys())
+                print("Bucket %s %s counts: [%d, %d]" % (
                     str(test_num),
                     get_key_str(pred),
                     pkt_counts[pred],
-                    byte_counts[pred])
+                    byte_counts[pred]))
 
         def print_total_entries():
-            print "Bucket %s total counts: [%d, %d]" % (
+            print("Bucket %s total counts: [%d, %d]" % (
                 str(test_num),
                 ac.pkt_count,
-                ac.byte_count)
+                ac.byte_count))
 
-        print '**************'
-        print datetime.now()
-        print 'Test', test_num, ' -- got a callback from installed path query!'
+        print('**************')
+        print(datetime.now())
+        print('Test', test_num, ' -- got a callback from installed path query!')
         if only_count_results:
             if isinstance(pkt, pyretic.core.packet.Packet):
                 touch_vars()
@@ -163,29 +163,29 @@ def query_callback(test_num):
                 print_predwise_entries()
                 print_total_entries()
             else:
-                print "Bucket %s (packet, byte) counts: %s" % (
-                    str(test_num), pkt)
+                print("Bucket %s (packet, byte) counts: %s" % (
+                    str(test_num), pkt))
         else:
-            print pkt
-        print '**************'
+            print(pkt)
+        print('**************')
     return actual_callback
 
 def path_callback(test_num):
     def actual_callback(pkt, paths):
-        print '**************'
-        print datetime.now()
-        print 'Test', test_num, ' -- got a callback from installed path query!'
-        print pkt
-        print 'Got', len(paths), 'path(s) from the callback.'
+        print('**************')
+        print(datetime.now())
+        print('Test', test_num, ' -- got a callback from installed path query!')
+        print(pkt)
+        print('Got', len(paths), 'path(s) from the callback.')
         path_index = 1
         for path in paths:
-            print '-----'
-            print 'Printing path', path_index
+            print('-----')
+            print('Printing path', path_index)
             path_index += 1
             for p in path:
-                print p
-            print '-----'
-        print '**************'
+                print(p)
+            print('-----')
+        print('**************')
     return actual_callback
 
 def path_test_0():
@@ -407,7 +407,7 @@ def change_dynamic_path(path_pol, interval, f_old_new_path_pol):
     while True:
         output =  str(datetime.now())
         output += "  Changing path policy"
-        print output
+        print(output)
         new_path_pol = f_old_new_path_pol(path_pol)
         path_pol.path_policy = new_path_pol
         time.sleep(interval)
@@ -494,7 +494,7 @@ def path_test_per_hop_pktcount(**kwargs):
 def chain_forwarding(**kwargs):
     params = dict(**kwargs)
     n = int(params['n'])
-    ips = [0] + map(lambda x: IPAddr('10.0.0.' + str(x)), range(1, n+1))
+    ips = [0] + [IPAddr('10.0.0.' + str(x)) for x in range(1, n+1)]
     host_pol = drop
     for h in range(1, n+1):
         switch_pol = drop

@@ -287,7 +287,7 @@ class PortDataState(dict):
             curr = curr[self._NEXT]
 
     def clear(self):
-        for node in self._map.itervalues():
+        for node in self._map.values():
             del node[:]
         root = self._root
         root[:] = [root, root, None]
@@ -394,10 +394,10 @@ class LLDPPacket(object):
     @staticmethod
     def lldp_parse(data):
         pkt = packet.Packet(data)
-        eth_pkt = pkt.next()
+        eth_pkt = next(pkt)
         assert type(eth_pkt) == ethernet.ethernet
 
-        lldp_pkt = pkt.next()
+        lldp_pkt = next(pkt)
         if type(lldp_pkt) != lldp.lldp:
             raise LLDPPacket.LLDPUnknownFormat()
 
@@ -471,7 +471,7 @@ class Switches(app_manager.RyuApp):
 
         self.dps[dp.id] = dp
         self.port_state[dp.id] = PortState()
-        for port in dp.ports.values():
+        for port in list(dp.ports.values()):
             self.port_state[dp.id].add(port.port_no, port)
 
     def _unregister(self, dp):
@@ -482,7 +482,7 @@ class Switches(app_manager.RyuApp):
     def _get_switch(self, dpid):
         if dpid in self.dps:
             switch = Switch(self.dps[dpid])
-            for ofpport in self.port_state[dpid].itervalues():
+            for ofpport in self.port_state[dpid].values():
                 switch.add_port(ofpport)
             return switch
 
@@ -729,7 +729,7 @@ class Switches(app_manager.RyuApp):
             timeout = None
             ports_now = []
             ports = []
-            for (key, data) in self.ports.items():
+            for (key, data) in list(self.ports.items()):
                 if data.timestamp is None:
                     ports_now.append(key)
                     continue
@@ -759,7 +759,7 @@ class Switches(app_manager.RyuApp):
 
             now = time.time()
             deleted = []
-            for (link, timestamp) in self.links.items():
+            for (link, timestamp) in list(self.links.items()):
                 # LOG.debug('%s timestamp %d (now %d)', link, timestamp, now)
                 if timestamp + self.LINK_TIMEOUT < now:
                     src = link.src
@@ -795,7 +795,7 @@ class Switches(app_manager.RyuApp):
         switches = []
         if dpid is None:
             # reply all list
-            for dp in self.dps.itervalues():
+            for dp in self.dps.values():
                 switches.append(self._get_switch(dp.id))
         elif dpid in self.dps:
             switches.append(self._get_switch(dpid))

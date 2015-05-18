@@ -44,11 +44,11 @@ import threading
 def query_callback(id_str, print_counts=True):
     def actual_callback(pkt):
         if print_counts:
-            print '**************'
-            print datetime.now()
-            print 'Test', id_str, ' -- got a callback from installed path query!'
-            print pkt
-            print '**************'
+            print('**************')
+            print(datetime.now())
+            print('Test', id_str, ' -- got a callback from installed path query!')
+            print(pkt)
+            print('**************')
     return actual_callback
 
 def cycle_forwarding_policy(n):
@@ -73,7 +73,7 @@ def query_func(bucket, interval, id_str, duration):
         output = str(datetime.now())
         output += " Pulling stats for bucket " + id_str
         # output += bucket.get_matches()
-        print output
+        print(output)
         bucket.pull_stats()
         time.sleep(interval)
         time_elapsed += interval

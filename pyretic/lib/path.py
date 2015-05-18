@@ -41,6 +41,7 @@ import subprocess
 import pyretic.vendor
 import pydot
 import copy
+from functools import reduce
 
 TOKEN_START_VALUE = 48 # start with printable ASCII for visual inspection ;)
 # token type definitions
@@ -134,9 +135,8 @@ class classifier_utils(object):
         pol_classifier = cls.__get_classifier__(p)
         matched_packets = drop
         for rule in pol_classifier.rules:
-            fwd_actions = filter(lambda a: (isinstance(a, modify)
-                                         and a['outport'] != OFPP_CONTROLLER),
-                              rule.actions)
+            fwd_actions = [a for a in rule.actions if (isinstance(a, modify)
+                                         and a['outport'] != OFPP_CONTROLLER)]
             if len(fwd_actions) > 0:
                 matched_packets += rule.match
         return ~matched_packets
@@ -201,7 +201,7 @@ class re_tree_gen(object):
         try:
             return chr(cls.token)
         except:
-            return unichr(cls.token)
+            return chr(cls.token)
 
     @classmethod
     def __replace_pred__(cls, old_pred, new_preds):
@@ -273,7 +273,7 @@ class re_tree_gen(object):
         ovlap = classifier_utils.get_overlap_mode
 
         re_tree = re_empty()
-        pred_list = cls.pred_to_symbol.keys()
+        pred_list = list(cls.pred_to_symbol.keys())
 
         """ Record dynamic predicates separately for update purposes."""
         dyn_pols = path_policy_utils.get_dyn_pols(new_pred)
@@ -339,7 +339,7 @@ class re_tree_gen(object):
     @classmethod
     def get_symlist(cls):
         """ Get a list of symbols which are leaf-level predicates """
-        return cls.symbol_to_pred.keys()
+        return list(cls.symbol_to_pred.keys())
 
     @classmethod
     def get_leaf_preds(cls):
@@ -358,8 +358,8 @@ class re_tree_gen(object):
     @classmethod
     def get_unaffected_pred(cls):
         """ Predicate that covers packets unaffected by query predicates. """
-        if len(cls.pred_to_symbol.keys()) >= 1:
-            return ~(reduce(lambda a,x: a | x, cls.pred_to_symbol.keys()))
+        if len(list(cls.pred_to_symbol.keys())) >= 1:
+            return ~(reduce(lambda a,x: a | x, list(cls.pred_to_symbol.keys())))
         else:
             return identity
 
@@ -557,8 +557,8 @@ class path_policy_utils(object):
         if isinstance(at, in_out_atom):
             p_in  = at.in_atom.policy
             p_out = at.out_atom.policy
-            in_set = map(lambda x: (x, p_in), cls.get_dyn_pols(p_in))
-            out_set = map(lambda x: (x, p_out), cls.get_dyn_pols(p_out))
+            in_set = [(x, p_in) for x in cls.get_dyn_pols(p_in)]
+            out_set = [(x, p_out) for x in cls.get_dyn_pols(p_out)]
             return acc | set(in_set) | set(out_set)
         elif isinstance(at, path):
             return acc
@@ -826,7 +826,7 @@ class path_combinator(path):
     def __eq__(self, other):
         return (type(self) == type(other) and
                 reduce(lambda acc, (x,y): acc and x == y,
-                       zip(self.paths, other.paths),
+                       list(zip(self.paths, other.paths)),
                        True))
 
     def __repr_pretty__(self, pre_spaces=''):
@@ -836,7 +836,7 @@ class path_combinator(path):
                 return x.__repr_pretty__(pre_spaces + extra_ind)
             except AttributeError:
                 return pre_spaces + extra_ind + repr(x)
-        repr_paths = map(get_repr, self.paths)
+        repr_paths = list(map(get_repr, self.paths))
         return "%s%s:\n%s" % (pre_spaces, self.name(), '\n'.join(repr_paths))
 
     def __repr__(self):
@@ -1075,7 +1075,7 @@ class pathcomp(object):
         - in and out character generators.
         """
         virtual_field(name="path_tag",
-                      values=range(0, numvals),
+                      values=list(range(0, numvals)),
                       type="integer")
         __in_re_tree_gen__.clear()
         __out_re_tree_gen__.clear()
@@ -1198,7 +1198,7 @@ class pathcomp(object):
         dfa = du.regexes_to_dfa(cls.re_list, '/tmp/pyretic-regexes.txt')
         
         # initialize virtual fields
-        virtual_field(name="path_tag", values=range(0, du.get_num_states(dfa)),
+        virtual_field(name="path_tag", values=list(range(0, du.get_num_states(dfa))),
                       type="integer")
 
         def get_hook_atoms(edge_label):
@@ -1339,7 +1339,7 @@ class pathcomp(object):
             """An essentially circular way of getting the path_tag value from a
             packet, since interpreted mode packets can't access the virtual
             headers on them through direct key reference."""
-            for tag in hooks_map.keys():
+            for tag in list(hooks_map.keys()):
                 pkts = cls.match_tag(tag).eval(pkt)
                 if len(pkts) > 0:
                     return tag
@@ -1363,12 +1363,12 @@ class pathcomp(object):
             return groups_list
 
         def actual_callback(pkt, paths):
-            print "Projected list of groups:"
+            print("Projected list of groups:")
             for p in paths:
                 proj = get_hook_projection(p, hooks_map, tagging)
                 for p in proj:
-                    for hook in p.keys():
-                        print hook.groupby, '=', p[hook]
+                    for hook in list(p.keys()):
+                        print(hook.groupby, '=', p[hook])
 
         return actual_callback
 

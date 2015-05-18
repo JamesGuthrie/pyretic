@@ -83,7 +83,7 @@ class BackendChannel(asynchat.async_chat):
 
         # USE DESERIALIZED MSG
         if msg is None or len(msg) == 0:
-            print "ERROR: empty message"
+            print("ERROR: empty message")
         elif msg[0] == 'switch':
             if msg[1] == 'join':
                 if msg[3] == 'BEGIN':
@@ -91,7 +91,7 @@ class BackendChannel(asynchat.async_chat):
             elif msg[1] == 'part':
                 self.backend.runtime.handle_switch_part(msg[2])
             else:
-                print "ERROR: Bad switch event"
+                print("ERROR: Bad switch event")
         elif msg[0] == 'port':
             if msg[1] == 'join':
                 self.backend.runtime.handle_port_join(msg[2],msg[3],msg[4],msg[5],msg[6])
@@ -100,7 +100,7 @@ class BackendChannel(asynchat.async_chat):
             elif msg[1] == 'part':
                 self.backend.runtime.handle_port_part(msg[2],msg[3])
             else:
-                print "ERROR: Bad port event"
+                print("ERROR: Bad port event")
         elif msg[0] == 'link':
             self.backend.runtime.handle_link_update(msg[1],msg[2],msg[3],msg[4])
         elif msg[0] == 'packet':
@@ -111,7 +111,7 @@ class BackendChannel(asynchat.async_chat):
         elif msg[0] == 'flow_removed':
             self.backend.runtime.handle_flow_removed(msg[1], msg[2])
         else:
-            print 'ERROR: Unknown msg from backend %s' % msg
+            print('ERROR: Unknown msg from backend %s' % msg)
         return
 
 

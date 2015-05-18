@@ -78,7 +78,7 @@ class OFCapableSwitch(object):
             capable_switch = element
             if not self.version:
                 versions = [(version, ns_) for version, ns_ in
-                            of_config.OFCONFIG_YANG_NAMESPACES.items()
+                            list(of_config.OFCONFIG_YANG_NAMESPACES.items())
                             if ns == ns_]
                 if versions:
                     assert len(versions) == 1

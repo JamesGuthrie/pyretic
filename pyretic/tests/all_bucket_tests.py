@@ -54,8 +54,8 @@ def single_test(fwding, query, filt_funs, topo_name, topo_args,
     cmd2 = ("rm -f %s" % pf_file)
     subprocess.call(shlex.split(cmd2))
     if success_info != 'PASS':
-        print "--- Got success_info: ---"
-        print success_info
+        print("--- Got success_info: ---")
+        print(success_info)
         fails_counts.append(success_info)
     return success_info == 'PASS'
 
@@ -89,10 +89,10 @@ def generic_topo_tests(topo_name, topo_args, fwding_pols):
                               test_nums[i])
             test_name = "%s %s on %s" % (query_pols[i], fwding, topo_name)
             if res:
-                print "===== TEST %s PASSED =====" % test_name
+                print("===== TEST %s PASSED =====" % test_name)
                 num_passed += 1
             else:
-                print "===== TEST %s FAILED =====" % test_name
+                print("===== TEST %s FAILED =====" % test_name)
                 failed_tests.append(test_name)
                 num_failed += 1
 
@@ -109,17 +109,17 @@ def cycle_topo_tests():
     generic_topo_tests(topo_name, topo_args, fwding_pols)
 
 def print_failed_tests():
-    print "Failed tests:"
+    print("Failed tests:")
     assert len(failed_tests) == len(fails_counts)
     for t in range(0, len(failed_tests)):
-        print failed_tests[t]
-        print fails_counts[t]
+        print(failed_tests[t])
+        print(fails_counts[t])
 
 if __name__ == "__main__":
     cycle_topo_tests()
     single_switch_topo_tests()
 
-    print "===== TESTS COMPLETE ====="
-    print "%d tests passed, %d failed" % (num_passed, num_failed)
+    print("===== TESTS COMPLETE =====")
+    print("%d tests passed, %d failed" % (num_passed, num_failed))
     if failed_tests:
         print_failed_tests()

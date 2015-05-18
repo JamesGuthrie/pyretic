@@ -8,7 +8,7 @@ class ChainTopo(Topo):
         # Add default members to class.
         super(ChainTopo, self ).__init__()
 
-        switch_inds = range(1,numSwitches+1)
+        switch_inds = list(range(1,numSwitches+1))
         self.add_switches(switch_inds)
         self.connect_switches(switch_inds)
 
@@ -144,14 +144,14 @@ class OneSwitchGatewayTopoNoSubnets(Topo):
     def __init__(self, numClients=3, numServers=3):        
         super(OneSwitchGatewayTopoNoSubnets, self).__init__()
 
-        client_inds = range(1,numClients+1)
-        server_inds = range(1,numServers+1)
+        client_inds = list(range(1,numClients+1))
+        server_inds = list(range(1,numServers+1))
 
         num_switches_left = 3
         num_switches_right = 3
 
         self.addSwitch('s1')
-        for switch_id in xrange(2, 2 + num_switches_left + num_switches_right): 
+        for switch_id in range(2, 2 + num_switches_left + num_switches_right): 
             self.addSwitch('s'+str(switch_id))
 
         from mininet.util import ipParse,ipAdd
@@ -183,8 +183,8 @@ class ThreeSwitchGatewayTopoNoSubnets(Topo):
     def __init__(self, numClients=3, numServers=3):        
         super(ThreeSwitchGatewayTopoNoSubnets, self).__init__()
 
-        client_inds = range(1,numClients+1)
-        server_inds = range(1,numServers+1)
+        client_inds = list(range(1,numClients+1))
+        server_inds = list(range(1,numServers+1))
 
         num_switches_left = 3
         num_switches_right = 3
@@ -192,7 +192,7 @@ class ThreeSwitchGatewayTopoNoSubnets(Topo):
         self.addSwitch('s1000')
         self.addSwitch('s1001')
         self.addSwitch('s1002')
-        for switch_id in xrange(2, 2 + num_switches_left + num_switches_right): 
+        for switch_id in range(2, 2 + num_switches_left + num_switches_right): 
             self.addSwitch('s'+str(switch_id))
 
         from mininet.util import ipParse,ipAdd
@@ -232,14 +232,14 @@ class OneSwitchGatewayTopo(Topo):
         left_prefix  = '10.0.0.'
         right_prefix = '10.0.1.'
 
-        client_inds = range(1,numClients+1)
-        server_inds = range(1,numServers+1)
+        client_inds = list(range(1,numClients+1))
+        server_inds = list(range(1,numServers+1))
 
         num_switches_left = 3
         num_switches_right = 3
 
         self.addSwitch('s1')
-        for switch_id in xrange(2, 2 + num_switches_left + num_switches_right): 
+        for switch_id in range(2, 2 + num_switches_left + num_switches_right): 
             self.addSwitch('s'+str(switch_id))
 
         from mininet.util import ipParse,ipAdd
@@ -277,8 +277,8 @@ class ThreeSwitchGatewayTopo(Topo):
         left_prefix  = '10.0.0.'
         right_prefix = '10.0.1.'
 
-        client_inds = range(1,numClients+1)
-        server_inds = range(1,numServers+1)
+        client_inds = list(range(1,numClients+1))
+        server_inds = list(range(1,numServers+1))
 
         num_switches_left = 3
         num_switches_right = 3
@@ -286,7 +286,7 @@ class ThreeSwitchGatewayTopo(Topo):
         self.addSwitch('s1000')
         self.addSwitch('s1001')
         self.addSwitch('s1002')
-        for switch_id in xrange(2, 2 + num_switches_left + num_switches_right): 
+        for switch_id in range(2, 2 + num_switches_left + num_switches_right): 
             self.addSwitch('s'+str(switch_id))
 
         from mininet.util import ipParse,ipAdd

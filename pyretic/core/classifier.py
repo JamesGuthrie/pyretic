@@ -1,6 +1,7 @@
 
 from collections import deque
 import copy
+from functools import reduce
 
 ###############################################################################
 # Classifiers
@@ -166,7 +167,7 @@ class Classifier(object):
         self.rules.pop()
 
     def __copy__(self):
-        copied_rules = map(copy.copy,self.rules)
+        copied_rules = list(map(copy.copy,self.rules))
         return Classifier(copied_rules)
 
 
@@ -241,7 +242,7 @@ class Classifier(object):
                     return identity
                 elif pkts == drop:
                     return drop
-                for f, v in pkts.map.iteritems():
+                for f, v in pkts.map.items():
                     if f in act.map and act.map[f] == v:
                         continue
                     elif f in act.map and act.map[f] != v:

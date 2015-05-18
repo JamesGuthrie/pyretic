@@ -3,7 +3,7 @@
 from mininet.net import Mininet
 from mininet.node import RemoteController
 import os, shlex, subprocess, utils, time
-from utils import init
+from .utils import init
 
 
 ### Module Parameters

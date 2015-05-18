@@ -4,12 +4,13 @@ from mininet.util import dumpNodeConnections
 from mininet.log import setLogLevel
 from mininet.node import CPULimitedHost, RemoteController
 from mininet.cli import CLI
-from extratopos import *
+from .extratopos import *
 import subprocess, shlex, time, signal, os, sys
 from threading import Timer
 import time
 import argparse
 import copy
+from functools import reduce
 
 ################################################################################
 #### Test-case-specific functions
@@ -25,7 +26,7 @@ def setup_network(test, params):
     elif test == "waypoint":
         return setup_waypoint_network(params)
     else:
-        print "Unknown test case topology!"
+        print("Unknown test case topology!")
         sys.exit(0)
 
 def setup_full_traffic_measurement(test, params, switches):
@@ -34,7 +35,7 @@ def setup_full_traffic_measurement(test, params, switches):
     elif test == "waypoint":
         return setup_waypoint_full_traffic_measurement(params, switches)
     else:
-        print "Unknown test case traffic measurement call!"
+        print("Unknown test case traffic measurement call!")
         sys.exit(0)
 
 def setup_workload(test, params, hosts):
@@ -43,7 +44,7 @@ def setup_workload(test, params, hosts):
     elif test == "waypoint":
         return setup_waypoint_workload(params, hosts)
     else:
-        print "Unknown test case for workload setup!"
+        print("Unknown test case for workload setup!")
         sys.exit(0)
 
 def setup_overhead_statistics(test, overheads_file, test_duration_sec, slack):
@@ -58,7 +59,7 @@ def setup_overhead_statistics(test, overheads_file, test_duration_sec, slack):
                                                 overheads_file,
                                                 test_duration_sec, slack)
     else:
-        print "Unknown test case for overhead statistics measurement!"
+        print("Unknown test case for overhead statistics measurement!")
         sys.exit(0)
 
 def setup_optimal_overheads_global(test, optimal_prefix, test_duration_sec,
@@ -69,7 +70,7 @@ def setup_optimal_overheads_global(test, optimal_prefix, test_duration_sec,
     elif test == "tm":
         return None
     else:
-        print "Unknown test case for optimal overhead statistics measurement!"
+        print("Unknown test case for optimal overhead statistics measurement!")
 
 ### Helper functions for getting hosts and switches from a network
 def get_hosts(net, num_hosts):
@@ -195,7 +196,7 @@ def ping_flow_pairs(net, hosts_src, hosts_dst):
     for i in range(0, len(hosts_src)):
         result = hosts_src[i].cmd('ping -c1 %s' % (hosts_dst[i].IP()))
         sent, received = net._parsePing(result)
-        print ('%d ' % i) if received else 'X '
+        print(('%d ' % i) if received else 'X ')
 
 ################################################################################
 ### Essentials test setup functions on all test cases
@@ -212,7 +213,7 @@ def pyretic_controller(test, testwise_params, c_out, c_err, pythonpath):
 
     cmd = ("pyretic.py -m p0 pyretic.evaluations.eval_path --test=" + test +
            reduce(lambda r, k: r + ("--" + k + "=" + testwise_params[k] + " "),
-                  testwise_params.keys(), " "))
+                  list(testwise_params.keys()), " "))
     c = subprocess.Popen(shlex.split(cmd), stdout=c_outfile, stderr=c_errfile,
                          env=py_env)
     return ([c], [c_outfile, c_errfile])
@@ -221,7 +222,7 @@ def wait_switch_rules_installed(switches):
     """This function waits for switch rule installation to stabilize on all
     switches before running tests.
     """
-    print "Waiting for switch rule installation to complete..."
+    print("Waiting for switch rule installation to complete...")
     not_fully_installed = True
     num_rules = {}
     num_iterations = 0
@@ -237,12 +238,12 @@ def wait_switch_rules_installed(switches):
             rules = int(rules)
             if not (rules == num_rules[s] and rules > 2): # not converged!
                 not_fully_installed = True
-                print '.'
+                print('.')
             num_rules[s] = rules
         time.sleep(per_iter_timeout)
-    print
+    print()
     time_waited = per_iter_timeout * num_iterations
-    print "Rules fully installed after waiting", time_waited, "seconds"
+    print("Rules fully installed after waiting", time_waited, "seconds")
 
 def run_iperf_test(net, hosts_src, hosts_dst, test_duration_sec,
                    per_transfer_bandwidth, client_prefix, server_prefix):
@@ -254,7 +255,7 @@ def run_iperf_test(net, hosts_src, hosts_dst, test_duration_sec,
     for dst in hosts_dst:
         dst_server_file = server_prefix + '-' + dst.name + '.txt'
         dst.cmd("iperf -fK -u -s -p 5002 2>&1 > " + dst_server_file + " &")
-    print "Finished starting up iperf servers..."
+    print("Finished starting up iperf servers...")
 
     # start iperf client transfers
     iperf_min = 1.63 * 1000 * 8
@@ -267,9 +268,9 @@ def run_iperf_test(net, hosts_src, hosts_dst, test_duration_sec,
                     per_transfer_bandwidth[i] + " 2>&1 > " + src_client_file +
                     "&")
         else:
-            print ("Avoiding transfer %s ---> %s because target bandwidth is too"
-                   " low" % (src.name, hosts_dst[i].name))
-    print "Client transfers initiated."
+            print(("Avoiding transfer %s ---> %s because target bandwidth is too"
+                   " low" % (src.name, hosts_dst[i].name)))
+    print("Client transfers initiated.")
 
 def get_interfaces(intr_list):
     """ Helper function to get tshark interface argument for a switch sw, whose
@@ -298,8 +299,8 @@ def setup_overhead_statistics_global(overheads_filter, overheads_file,
            "'tcp port 6633' -a duration:" + str(test_duration_sec+3))
     f = open(overheads_file, "w")
     p = subprocess.Popen(shlex.split(cmd), stdout=f, stderr=subprocess.STDOUT)
-    print "Started tshark process"
-    print '--->', cmd
+    print("Started tshark process")
+    print('--->', cmd)
     return ([p], [f])
 
 def setup_optimal_overhead_statistics(filters, interfaces, files_prefix,
@@ -312,7 +313,7 @@ def setup_optimal_overhead_statistics(filters, interfaces, files_prefix,
         cmd = ("tshark -q -f " + filters[i] + ' ' +
                get_interfaces(interfaces[i]) +
                " -z io,stat,0 -a duration:" + str(test_duration_sec+3))
-        print '--->', cmd
+        print('--->', cmd)
         f_list.append('%s-%d.txt' % (files_prefix, i+1))
         cmds_list.append(cmd)
     return get_fds_processes(cmds_list, f_list)
@@ -328,7 +329,7 @@ def run_tshark_full_traffic_measurement(internal_ints, external_ints,
     def get_tshark_cmd_file(interfaces, file_suffix):
         cmd = ("tshark -f inbound -q " + get_interfaces(interfaces) +
                " -z io,stat,0 -a duration:" + str(test_duration_sec+3))
-        print '--->', cmd
+        print('--->', cmd)
         fname = total_traffic_prefix + file_suffix
         return (cmd, fname)
 
@@ -405,16 +406,16 @@ def query_test():
 
     ctlr = None
     if not controller_debug_mode:
-        print "Starting pyretic controller"
+        print("Starting pyretic controller")
         ctlr = pyretic_controller(test, testwise_params, c_out, c_err, pypath)
 
-    print "Setting up topology"
+    print("Setting up topology")
     (net, hosts, switches) = setup_network(test, args)
 
-    print "Setting up workload configuration"
+    print("Setting up workload configuration")
     (hosts_src, hosts_dst, per_flow_bw) = setup_workload(test, args, hosts)
 
-    print "Setting up handlers for graceful experiment abort"
+    print("Setting up handlers for graceful experiment abort")
     ovhead_stats = None
     switch_stats = None
     opt_stats    = None
@@ -422,26 +423,26 @@ def query_test():
                                                    ovhead_stats, switch_stats,
                                                    opt_stats, net, hosts_dst))
 
-    print "Setting up switch rules"
+    print("Setting up switch rules")
     if controller_debug_mode:
-        print "*** YOU must start the controller separately for this to work!"
+        print("*** YOU must start the controller separately for this to work!")
     wait_switch_rules_installed(switches)
 
-    print "Setting up overhead statistics measurements"
+    print("Setting up overhead statistics measurements")
     ovhead_stats = setup_overhead_statistics(test, overheads_file,
                                              test_duration_sec,
                                              slack_factor)
 
-    print "Setting optimal overheads measurements"
+    print("Setting optimal overheads measurements")
     opt_stats = setup_optimal_overheads_global(test,
                                                optimal_files_prefix,
                                                test_duration_sec,
                                                slack_factor)
 
-    print "Setting up collectors for total traffic"
+    print("Setting up collectors for total traffic")
     switch_stats = setup_full_traffic_measurement(test, args, switches)
 
-    print "Resetting abort handler to tackle overhead stats"
+    print("Resetting abort handler to tackle overhead stats")
     signal.signal(signal.SIGINT, get_abort_handler(controller_debug_mode, ctlr,
                                                    ovhead_stats, switch_stats,
                                                    opt_stats, net, hosts_dst))
@@ -450,20 +451,20 @@ def query_test():
     # ping_flow_pairs(net, hosts_src, hosts_dst)
 
     # Wait for tshark to start up
-    print "Waiting for tshark to start up..."
+    print("Waiting for tshark to start up...")
     time.sleep(tshark_wait_slack_sec)
 
-    print "Starting iperf tests"
+    print("Starting iperf tests")
     run_iperf_test(net, hosts_src, hosts_dst, test_duration_sec, per_flow_bw,
                    iperf_client_prefix, iperf_server_prefix)
 
-    print ("Running iperf transfer tests. This may take a while (" +
-           str(test_duration_sec) + " seconds)...")
+    print(("Running iperf transfer tests. This may take a while (" +
+           str(test_duration_sec) + " seconds)..."))
     time.sleep(test_duration_sec)
-    print "Experiment done!"
+    print("Experiment done!")
 
     # Wrapping up and cleaning up
-    print "Writing down experiment parameters for successful completion"
+    print("Writing down experiment parameters for successful completion")
     write_expt_settings(args, params_file)
 
     finish_up(controller_debug_mode, ctlr, ovhead_stats, switch_stats,
@@ -483,7 +484,7 @@ def mn_cleanup():
 def write_expt_settings(params, params_file):
     f = open(params_file, 'w')
     params_dict = vars(params)
-    for k in params_dict.keys():
+    for k in list(params_dict.keys()):
         f.write(k + " " + str(params_dict[k]) + "\n")
     f.close()
 
@@ -492,9 +493,9 @@ def finish_up(controller_debug_mode, ctlr, ovhead_stats, switch_stats,
     def close_fds(fds, fd_str):
         for fd in fds:
             fd.close()
-        print "Closed", fd_str, "file descriptors"
+        print("Closed", fd_str, "file descriptors")
 
-    print "--- Cleaning up after experiment ---"
+    print("--- Cleaning up after experiment ---")
     # controller
     if not controller_debug_mode:
         ([p], fds) = ctlr
@@ -520,7 +521,7 @@ def finish_up(controller_debug_mode, ctlr, ovhead_stats, switch_stats,
     # mininet network
     if not controller_debug_mode:
         net.stop()
-        print "Killed mininet network"
+        print("Killed mininet network")
 
 def get_abort_handler(controller_debug_mode, ctlr, ovhead_stats, switch_stats,
                       opt_stats, net, hosts_dst):
@@ -531,7 +532,7 @@ def get_abort_handler(controller_debug_mode, ctlr, ovhead_stats, switch_stats,
     return abort_handler
 
 def kill_process(p, process_str):
-    print "Signaling", process_str, "for experiment completion"
+    print("Signaling", process_str, "for experiment completion")
     p.send_signal(signal.SIGINT)
 
 ################################################################################
@@ -586,7 +587,7 @@ def get_testwise_params(test, args):
         params['violating_frac'] = str(args.violating_frac)
         params['total_bw'] = str(args.total_bw)
     else:
-        print "Error! Requesting test-wise-args for unknown test", test
+        print("Error! Requesting test-wise-args for unknown test", test)
         sys.exit(1)
     return params
 

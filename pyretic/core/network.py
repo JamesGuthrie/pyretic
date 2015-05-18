@@ -84,7 +84,7 @@ class IPAddr(object):
 
         # otherwise will be in byte or string encoding
         else:
-            assert isinstance(ip, basestring)
+            assert isinstance(ip, str)
             
             b = bitarray()
 
@@ -135,7 +135,7 @@ class EthAddr(object):
 
         # otherwise will be in byte or string encoding
         else:
-            assert isinstance(mac, basestring)
+            assert isinstance(mac, str)
             
             b = bitarray()
 
@@ -248,11 +248,11 @@ class Topology(nx.Graph):
         return self.nodes()
 
     def switch_with_port_ids_list(self):
-        return [(switch,attrs['ports'].keys()) 
+        return [(switch,list(attrs['ports'].keys())) 
                 for switch,attrs in self.nodes(data=True)]
     
     def switch_with_ports_list(self):
-        return [(switch,attrs['ports'].values()) 
+        return [(switch,list(attrs['ports'].values())) 
                 for switch,attrs in self.nodes(data=True)]
 
     def add_switch(self,switch):
@@ -276,7 +276,7 @@ class Topology(nx.Graph):
                 locs |= (self.egress_locations(s))
         else:
             try: 
-                for port in self.node[switch]['ports'].values():
+                for port in list(self.node[switch]['ports'].values()):
                     if port.possibly_up() and port.linked_to is None:
                         locs.add(Location(switch,port.port_no))
             except KeyError:
@@ -289,7 +289,7 @@ class Topology(nx.Graph):
             for s in self.nodes():
                 locs |= (self.interior_locations(s))
         else:
-            for port in self.node[switch]['ports'].values():
+            for port in list(self.node[switch]['ports'].values()):
                 if port.possibly_up() and not port.linked_to is None:
                     locs.add(Location(switch,port.port_no))
         return locs
@@ -303,7 +303,7 @@ class Topology(nx.Graph):
                     pass
                 else:
                     # reconcile node data
-                    for (k,v) in data.items():
+                    for (k,v) in list(data.items()):
                         self.node[s][k] = v
             except KeyError:
                 # removed node
@@ -317,7 +317,7 @@ class Topology(nx.Graph):
                     pass
                 else:
                     # copying edge data
-                    for (k,v) in data.items():
+                    for (k,v) in list(data.items()):
                         self[s1][s2][k] = v
             except: 
                 # no edge to copy
@@ -407,9 +407,9 @@ class Topology(nx.Graph):
     def all_pairs_shortest_path(cls,topology):
         location_paths = {}
         switch_paths = nx.all_pairs_shortest_path(topology)
-        for s1, paths in switch_paths.items():
+        for s1, paths in list(switch_paths.items()):
             location_paths[s1] = {}
-            for s2, path in paths.items():
+            for s2, path in list(paths.items()):
                 location_paths[s1][s2] = []
                 cur = s1
                 for nxt in path + [s2]:
@@ -437,9 +437,9 @@ class Topology(nx.Graph):
 
         if len(self.nodes()) > 0:
             edge_str_maxlen = \
-                max( [len(ed) for ed in edge_str.values()] + [edge_str_maxlen] )
+                max( [len(ed) for ed in list(edge_str.values())] + [edge_str_maxlen] )
             egress_str_maxlen = \
-                max( [len(eg) for eg in egress_str.values()] + [egress_str_maxlen] )
+                max( [len(eg) for eg in list(egress_str.values())] + [egress_str_maxlen] )
 
         table_width = switch_str_maxlen + 5 + edge_str_maxlen + 5 + egress_str_maxlen + 3
         output_str += '\n'.rjust(table_width+1,'-')

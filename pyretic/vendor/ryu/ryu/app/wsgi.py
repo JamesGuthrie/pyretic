@@ -52,7 +52,7 @@ class ControllerBase(object):
     def __init__(self, req, link, data, **config):
         self.req = req
         self.link = link
-        for name, value in config.items():
+        for name, value in list(config.items()):
             setattr(self, name, value)
 
     def __call__(self, req):
@@ -142,7 +142,7 @@ class WSGIServer(hub.WSGIServer):
 
 
 def start_service(app_mgr):
-    for instance in app_mgr.contexts.values():
+    for instance in list(app_mgr.contexts.values()):
         if instance.__class__ == WSGIApplication:
             return WSGIServer(instance)
 

@@ -29,7 +29,7 @@
 from pyretic.core.language import identity, match, union, DerivedPolicy, DynamicFilter, Query, FwdBucket, CountBucket, DynamicPolicy
 import time
 import copy
-import re
+from . import re
 from threading import Thread
 from multiprocessing import Lock
 
@@ -180,7 +180,7 @@ class counts(DynamicPolicy):
         """Pulls statistics from the switches corresponding to all groupings."""
         buckets_list = []
         with self.queried_preds_lock:
-            self.queried_preds = set(copy.deepcopy(self.bucket_dict.keys()))
+            self.queried_preds = set(copy.deepcopy(list(self.bucket_dict.keys())))
             self.reported_counts = {}
             for pred in self.queried_preds:
                 buckets_list.append(self.bucket_dict[pred])

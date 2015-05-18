@@ -109,7 +109,7 @@ class vmap(object):
         non_ingress = ~union(union(match(switch=u.switch,
                                          inport=u.port_no) 
                                    for u in us) for (d, us) 
-                             in self.d2u.iteritems())
+                             in self.d2u.items())
         ingress = (union(union(match(switch=u.switch,
                                      inport=u.port_no)
                                for u in us) >> 
@@ -117,13 +117,13 @@ class vmap(object):
                               vswitch=d.switch, 
                               vinport=d.port_no, 
                               voutport=-1)
-                         for (d, us) in self.d2u.iteritems()))
+                         for (d, us) in self.d2u.items()))
         return ingress + non_ingress
 
     def egress_policy(self):
         matches_egress = []
         valid_match_egress = []
-        for (d, us) in self.d2u.iteritems():
+        for (d, us) in self.d2u.items():
             switch_pred = union(match(switch=u.switch, 
                                       outport=u.port_no) 
                                 for u in us)
@@ -136,8 +136,8 @@ class vmap(object):
     def one_to_one_fabric_policy(self):
         fabric_policy = drop
         # ITERATE THROUGH ALL PAIRS OF VIRTUAL PORTS
-        for (d1,[u1]) in self.d2u.items():
-            for (d2,[u2]) in self.d2u.items():
+        for (d1,[u1]) in list(self.d2u.items()):
+            for (d2,[u2]) in list(self.d2u.items()):
                 # FABRIC POLICY ONLY EXISTS WITHIN EACH VIRTUAL SWITCH
                 if d1.switch != d2.switch:
                     continue
@@ -152,8 +152,8 @@ class vmap(object):
         fabric_policy = drop
         paths = Topology.all_pairs_shortest_path(topo)
         # ITERATE THROUGH ALL PAIRS OF VIRTUAL PORTS
-        for (d1,[u1]) in self.d2u.items():
-            for (d2,[u2]) in self.d2u.items():
+        for (d1,[u1]) in list(self.d2u.items()):
+            for (d2,[u2]) in list(self.d2u.items()):
                 # FABRIC POLICY ONLY EXISTS WITHIN EACH VIRTUAL SWITCH
                 if d1.switch != d2.switch:
                     continue
@@ -203,7 +203,7 @@ class vdef(object):
                 self.underlying.inject_packet(pkt)
             else:
                 output = self.injection_policy.eval(pkt)
-                map(self.underlying.inject_packet,output)
+                list(map(self.underlying.inject_packet,output))
 
     class locate_packet_in_underlying(Policy):
         def __init__(self):

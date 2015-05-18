@@ -40,7 +40,7 @@ class DbSchema(object):
         # backward compatibility, if the root set is empty then assume that
         # every table is in the root set.
         if self.__root_set_size() == 0:
-            for table in self.tables.itervalues():
+            for table in self.tables.values():
                 table.is_root = True
 
         # Find the "ref_table"s referenced by "ref_table_name"s.
@@ -48,15 +48,15 @@ class DbSchema(object):
         # Also force certain columns to be persistent, as explained in
         # __check_ref_table().  This requires 'is_root' to be known, so this
         # must follow the loop updating 'is_root' above.
-        for table in self.tables.itervalues():
-            for column in table.columns.itervalues():
+        for table in self.tables.values():
+            for column in table.columns.values():
                 self.__follow_ref_table(column, column.type.key, "key")
                 self.__follow_ref_table(column, column.type.value, "value")
 
     def __root_set_size(self):
         """Returns the number of tables in the schema's root set."""
         n_root = 0
-        for table in self.tables.itervalues():
+        for table in self.tables.values():
             if table.is_root:
                 n_root += 1
         return n_root
@@ -65,8 +65,8 @@ class DbSchema(object):
     def from_json(json):
         parser = ovs.db.parser.Parser(json, "database schema")
         name = parser.get("name", ['id'])
-        version = parser.get_optional("version", [str, unicode])
-        parser.get_optional("cksum", [str, unicode])
+        version = parser.get_optional("version", [str, str])
+        parser.get_optional("cksum", [str, str])
         tablesJson = parser.get("tables", [dict])
         parser.finish()
 
@@ -76,7 +76,7 @@ class DbSchema(object):
                               % version)
 
         tables = {}
-        for tableName, tableJson in tablesJson.iteritems():
+        for tableName, tableJson in tablesJson.items():
             _check_id(tableName, json)
             tables[tableName] = TableSchema.from_json(tableJson, tableName)
 
@@ -90,7 +90,7 @@ class DbSchema(object):
         default_is_root = self.__root_set_size() == len(self.tables)
 
         tables = {}
-        for table in self.tables.itervalues():
+        for table in self.tables.values():
             tables[table.name] = table.to_json(default_is_root)
         json = {"name": self.name, "tables": tables}
         if self.version:
@@ -130,8 +130,8 @@ class IdlSchema(DbSchema):
     @staticmethod
     def from_json(json):
         parser = ovs.db.parser.Parser(json, "IDL schema")
-        idlPrefix = parser.get("idlPrefix", [str, unicode])
-        idlHeader = parser.get("idlHeader", [str, unicode])
+        idlPrefix = parser.get("idlPrefix", [str, str])
+        idlHeader = parser.get("idlHeader", [str, str])
 
         subjson = dict(json)
         del subjson["idlPrefix"]
@@ -149,7 +149,7 @@ def column_set_from_json(json, columns):
         raise error.Error("array of distinct column names expected", json)
     else:
         for column_name in json:
-            if type(column_name) not in [str, unicode]:
+            if type(column_name) not in [str, str]:
                 raise error.Error("array of distinct column names expected",
                                   json)
             elif column_name not in columns:
@@ -162,7 +162,7 @@ def column_set_from_json(json, columns):
 
 
 class TableSchema(object):
-    def __init__(self, name, columns, mutable=True, max_rows=sys.maxint,
+    def __init__(self, name, columns, mutable=True, max_rows=sys.maxsize,
                  is_root=True, indexes=[]):
         self.name = name
         self.columns = columns
@@ -182,7 +182,7 @@ class TableSchema(object):
         parser.finish()
 
         if max_rows == None:
-            max_rows = sys.maxint
+            max_rows = sys.maxsize
         elif max_rows <= 0:
             raise error.Error("maxRows must be at least 1", json)
 
@@ -190,7 +190,7 @@ class TableSchema(object):
             raise error.Error("table must have at least one column", json)
 
         columns = {}
-        for column_name, column_json in columns_json.iteritems():
+        for column_name, column_json in columns_json.items():
             _check_id(column_name, json)
             columns[column_name] = ColumnSchema.from_json(column_json,
                                                           column_name)
@@ -229,11 +229,11 @@ class TableSchema(object):
             json["isRoot"] = self.is_root
 
         json["columns"] = columns = {}
-        for column in self.columns.itervalues():
+        for column in self.columns.values():
             if not column.name.startswith("_"):
                 columns[column.name] = column.to_json()
 
-        if self.max_rows != sys.maxint:
+        if self.max_rows != sys.maxsize:
             json["maxRows"] = self.max_rows
 
         if self.indexes:
@@ -257,7 +257,7 @@ class ColumnSchema(object):
         parser = ovs.db.parser.Parser(json, "schema for column %s" % name)
         mutable = parser.get_optional("mutable", [bool], True)
         ephemeral = parser.get_optional("ephemeral", [bool], False)
-        type_ = types.Type.from_json(parser.get("type", [dict, str, unicode]))
+        type_ = types.Type.from_json(parser.get("type", [dict, str, str]))
         parser.finish()
 
         return ColumnSchema(name, mutable, not ephemeral, type_)

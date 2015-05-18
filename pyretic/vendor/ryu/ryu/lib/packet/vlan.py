@@ -26,9 +26,8 @@ from . import pbb
 from ryu.ofproto import ether
 
 
-class _vlan(packet_base.PacketBase):
+class _vlan(packet_base.PacketBase, metaclass=abc.ABCMeta):
 
-    __metaclass__ = abc.ABCMeta
     _PACK_STR = "!HH"
     _MIN_LEN = struct.calcsize(_PACK_STR)
 

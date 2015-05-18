@@ -115,14 +115,14 @@ class DPSet(app_manager.RyuApp):
         if not dp.id in self.port_state:
             self.port_state[dp.id] = PortState()
             ev = EventDP(dp, True)
-            for port in dp.ports.values():
+            for port in list(dp.ports.values()):
                 self._port_added(dp, port)
                 ev.ports.append(port)
             self.send_event_to_observers(ev)
 
     def _unregister(self, dp):
         # see the comment in _register().
-        if not dp in self.dps.values():
+        if not dp in list(self.dps.values()):
             return
         LOG.debug('DPSET: unregister datapath %s', dp)
         assert self.dps[dp.id] == dp
@@ -130,7 +130,7 @@ class DPSet(app_manager.RyuApp):
         # Now datapath is already dead, so port status change event doesn't
         # interfere us.
         ev = EventDP(dp, False)
-        for port in self.port_state.get(dp.id, {}).values():
+        for port in list(self.port_state.get(dp.id, {}).values()):
             self._port_deleted(dp, port)
             ev.ports.append(port)
 
@@ -157,7 +157,7 @@ class DPSet(app_manager.RyuApp):
 
             [ (dpid_A, Datapath_A), (dpid_B, Datapath_B), ... ]
         """
-        return self.dps.items()
+        return list(self.dps.items())
 
     def _port_added(self, datapath, port):
         self.port_state[datapath.id].add(port.port_no, port)
@@ -230,4 +230,4 @@ class DPSet(app_manager.RyuApp):
         instances for the given Datapath ID.
         Raises KeyError if no such a datapath connected to this controller.
         """
-        return self.port_state[dpid].values()
+        return list(self.port_state[dpid].values())

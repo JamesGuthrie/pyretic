@@ -65,11 +65,11 @@ def send_arp(msg_type,network,switch,outport,srcip,srcmac,dstip,dstmac):
 
     if VERBOSE_LEVEL > 0:
         if msg_type == RESPONSE:
-            print "--------- INJECTING RESPONSE ON %d[%d] FOR %s TO %s -----------" % (switch,outport,srcip,dstip)
+            print("--------- INJECTING RESPONSE ON %d[%d] FOR %s TO %s -----------" % (switch,outport,srcip,dstip))
         if msg_type == REQUEST:
-            print "--------- INJECTING REQUEST ON %d[%d] FOR %s FROM %s -----------" % (switch,outport,dstip,srcip)
+            print("--------- INJECTING REQUEST ON %d[%d] FOR %s FROM %s -----------" % (switch,outport,dstip,srcip))
         if VERBOSE_LEVEL > 1:
-            print rp
+            print(rp)
 
     network.inject_packet(rp)
 
@@ -77,8 +77,8 @@ def send_arp(msg_type,network,switch,outport,srcip,srcmac,dstip,dstmac):
 def translate(mac_of={}):
     """Translate dstmac based on input IP/MAC mapping"""
     known_ip = parallel([ match(dstip=ip) >> modify(dstmac=mac) 
-                          for (ip,mac) in mac_of.iteritems() ])
-    unknown_ip = ~dstip_in(mac_of.keys())
+                          for (ip,mac) in mac_of.items() ])
+    unknown_ip = ~dstip_in(list(mac_of.keys()))
     return known_ip + unknown_ip
 
 
@@ -114,15 +114,15 @@ class arp(DynamicPolicy):
         if opcode == 1:
             if dstip in self.mac_of:
                 if VERBOSE_LEVEL > 0:
-                    print "RECEIVED REQUEST FOR %s FROM %s, KNOWN HOST" % (dstip,srcip)
+                    print("RECEIVED REQUEST FOR %s FROM %s, KNOWN HOST" % (dstip,srcip))
                     if VERBOSE_LEVEL > 1:
-                        print pkt
+                        print(pkt)
                 send_arp(RESPONSE,self.network,switch,inport,dstip,self.mac_of[dstip],srcip,srcmac)
             else:
                 if VERBOSE_LEVEL > 0:
-                    print "RECEIVED REQUEST FOR %s FROM %s, UNKNOWN HOST" % (dstip,srcip)
+                    print("RECEIVED REQUEST FOR %s FROM %s, UNKNOWN HOST" % (dstip,srcip))
                     if VERBOSE_LEVEL > 1:
-                        print pkt
+                        print(pkt)
 
                 # LEARN MAC
                 self.mac_of[srcip] = srcmac  
@@ -147,9 +147,9 @@ class arp(DynamicPolicy):
                 del self.outstanding_requests[dstip][srcip]
 
                 if VERBOSE_LEVEL > 0:
-                    print "OUTSTANDING RESPONSE FOR %s TO %s" % (srcip,dstip)
+                    print("OUTSTANDING RESPONSE FOR %s TO %s" % (srcip,dstip))
                     if VERBOSE_LEVEL > 1:
-                        print pkt
+                        print(pkt)
 
                 # LEARN MAC
                 self.mac_of[srcip] = srcmac
@@ -158,8 +158,8 @@ class arp(DynamicPolicy):
             except:
 
                 if VERBOSE_LEVEL > 1:
-                    print "IGNORABLE RESPONSE FOR %s TO %s" % (srcip,dstip)
-                    print pkt
+                    print("IGNORABLE RESPONSE FOR %s TO %s" % (srcip,dstip))
+                    print(pkt)
                 pass    
 
 def arp_and_flood():

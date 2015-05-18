@@ -32,6 +32,7 @@ from pyretic.lib.std import *
 from pyretic.lib.re import *
 
 import pytest
+from functools import reduce
 
 def test_normal_forms():
     # Declare some regular expressions first.
@@ -384,7 +385,7 @@ def test_dfa_metadata():
 
     def list_equals_meta_structural(x, y):
         return reduce(lambda acc, (u,v): acc and u.equals_meta_structural(v),
-                      zip(x, y),
+                      list(zip(x, y)),
                       True)
 
     # make DFAs, and check all metadata transitions
@@ -559,6 +560,6 @@ if __name__ == "__main__":
     test_dfa_vector()
     test_dot_vector()
 
-    print "If this message is printed without errors before it, we're good."
-    print "Also ensure all unit tests are listed above this line in the source."
+    print("If this message is printed without errors before it, we're good.")
+    print("Also ensure all unit tests are listed above this line in the source.")
 

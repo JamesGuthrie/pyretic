@@ -1,4 +1,5 @@
 import subprocess, shlex, os, sys, argparse, string
+from functools import reduce
 
 ################################################################################
 ### Parameter sweep functions
@@ -26,9 +27,9 @@ def sweep(args, runwise_folder_prefix, sweep_list, sweep_str,
 
     # Run mininet tests
     if not args.no_mininet:
-        print "***Starting sweep for different " + sweep_str + " values..."
+        print("***Starting sweep for different " + sweep_str + " values...")
         for value in sweep_list:
-            print sweep_str, value, "mininet test running ..."
+            print(sweep_str, value, "mininet test running ...")
             folder = get_runwise_folder(value)
             create_folder_if_not_exists(folder)
             mininet_errfile = get_adjust_path(folder)(mininet_errfile_suffix)
@@ -36,9 +37,9 @@ def sweep(args, runwise_folder_prefix, sweep_list, sweep_str,
 
     # Extract stats from runs
     if not args.no_stats:
-        print "***Getting stats from mininet raw output data..."
+        print("***Getting stats from mininet raw output data...")
         for value in sweep_list:
-            print "Extracting", sweep_str, value, "statistics..."
+            print("Extracting", sweep_str, value, "statistics...")
             folder = get_runwise_folder(value)
             single_run_stats = get_single_run_stats(folder, queried_hosts)
             stats.append((value, single_run_stats))
@@ -46,10 +47,10 @@ def sweep(args, runwise_folder_prefix, sweep_list, sweep_str,
 
     # Generate plots
     if not args.no_plots:
-        print "***Generating plots for", sweep_str, "sweep experiment..."
+        print("***Generating plots for", sweep_str, "sweep experiment...")
         generate_graph_fun(stats_file, plot_script, adjust_path)
 
-    print "***Done!"
+    print("***Done!")
 
 def sweep_waypoint_fractions(args):
     """ Sweep access-control violating fractions for the "waypoint" test case in
@@ -62,7 +63,7 @@ def sweep_waypoint_fractions(args):
 
     sweep(args,
           "waypoint",
-          map(lambda i: str(0.10 * i), range(0,11)),
+          [str(0.10 * i) for i in range(0,11)],
           "waypoint violating fraction",
           mininet_waypoint_test_params,
           ["h1"],
@@ -82,10 +83,10 @@ def sweep_query_periods(args):
 
     sweep(args,
           "tm",
-          map(lambda i: str(5 * i), range(1, 7)),
+          [str(5 * i) for i in range(1, 7)],
           "query period",
           mininet_tm_test_params,
-          map(lambda i: 'h'+str(i), range(1, num_hosts+1)),
+          ['h'+str(i) for i in range(1, num_hosts+1)],
           generate_tm_graph)
 
 ################################################################################
@@ -95,7 +96,7 @@ def sweep_query_periods(args):
 def get_cl_string(params):
     """ Get command-line parameter string from a dictionary. """
     return reduce(lambda r, k: r + '--' + k + '=' + params[k] + ' ',
-                  params.keys(), ' ')
+                  list(params.keys()), ' ')
 
 def run_mininet_test(params, mininet_errfile):
     """ Running a single experiment run on mininet + pyretic. """
@@ -159,8 +160,8 @@ def plot_one_quantity(stats_file, plot_output_file, plot_script, x_label,
     out = subprocess.check_output(cmd, shell=True)
     pdf_cmd = 'epstopdf ' + plot_output_file + ' --autorotate=All'
     out = subprocess.check_output(pdf_cmd, shell=True)
-    print ("Plots are at " + plot_output_file + " and " +
-           change_file_extension(plot_output_file))
+    print(("Plots are at " + plot_output_file + " and " +
+           change_file_extension(plot_output_file)))
 
 def generate_tm_graph(stats_file, plot_script, adjust_path):
     """ TM-specific function: Given a stats file, and a plot_output_file,
@@ -218,7 +219,7 @@ def get_iperf_client_bytes(client_file):
     if kbytes:
         return float(kbytes.strip()) * 1000
     else:
-        print "No iperf output found in %s!" % client_file
+        print("No iperf output found in %s!" % client_file)
         return 0.0
 
 def has_pyretic_error(error_file):
@@ -292,7 +293,7 @@ def single_stat_test():
     results_folder = "./pyretic/evaluations/results/"
     queried_hosts = ["h1"]
     stats = get_single_run_stats(results_folder, queried_hosts)
-    print stats
+    print(stats)
 
 ################################################################################
 ### Argument parsing to select sub-parts of the sweep to run

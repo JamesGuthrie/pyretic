@@ -242,7 +242,7 @@ class OFConfigClient(app_manager.RyuApp):
         return tree
 
     def _do_get_config(self, source):
-        print('source = %s' % source)
+        print(('source = %s' % source))
         config_xml = self.switch.get_config(source)
 
         tree = lxml.etree.fromstring(config_xml)
@@ -257,12 +257,12 @@ class OFConfigClient(app_manager.RyuApp):
     def _print_ports(self, tree, ns):
         for port in tree.findall('{%s}%s/{%s}%s' % (ns, ofc_consts.RESOURCES,
                                                     ns, ofc_consts.PORT)):
-            print(lxml.etree.tostring(port, pretty_print=True))
+            print((lxml.etree.tostring(port, pretty_print=True)))
 
     def _set_ports_down(self):
         """try to set all ports down with etree operation"""
         tree = self._do_get()
-        print lxml.etree.tostring(tree, pretty_print=True)
+        print(lxml.etree.tostring(tree, pretty_print=True))
 
         qname = lxml.etree.QName(tree.tag)
         ns = qname.namespace

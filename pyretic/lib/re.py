@@ -30,11 +30,12 @@
 ################################################################################
 
 import string
+from functools import reduce
 try:
     import pyretic.vendor
     import pydot as dot
 except:
-    print "Couldn't import pydot; dot visualization will not be possible."
+    print("Couldn't import pydot; dot visualization will not be possible.")
 
 # Sorting key macros
 KEY_EMPTY   = -1
@@ -201,7 +202,7 @@ class re_combinator(re_deriv):
         if self == other:
             return reduce(lambda acc, (x,y): (acc and
                           x.equals_meta_structural(y)),
-                          zip(self.re_list, other.re_list),
+                          list(zip(self.re_list, other.re_list)),
                           True)
         else:
             return False
@@ -212,7 +213,7 @@ class re_combinator(re_deriv):
         """
         if self == other:
             return reduce(lambda acc, (x,y): acc and x.equals_meta_by_id(y),
-                          zip(self.re_list, other.re_list),
+                          list(zip(self.re_list, other.re_list)),
                           True)
         else:
             return False
@@ -254,11 +255,11 @@ class re_alter(re_combinator):
         return KEY_ALTER
 
     def re_string_repr(self):
-        words = map(lambda x: x.re_string_repr(), self.re_list)
+        words = [x.re_string_repr() for x in self.re_list]
         return '(' + string.join(words, ') | (') + ')'
 
     def __repr__(self):
-        words = map(lambda x: repr(x), self.re_list)
+        words = [repr(x) for x in self.re_list]
         return '(' + string.join(words, ') | (') + ')'
 
 class re_star(re_combinator):
@@ -294,11 +295,11 @@ class re_inters(re_combinator):
         return KEY_INTERS
 
     def re_string_repr(self):
-        words = map(lambda x: x.re_string_repr(), self.re_list)
+        words = [x.re_string_repr() for x in self.re_list]
         return '(' + string.join(words, ') & (') + ')'
 
     def __repr__(self):
-        words = map(lambda x: repr(x), self.re_list)
+        words = [repr(x) for x in self.re_list]
         return '(' + string.join(words, ') & (') + ')'
 
 class re_negate(re_combinator):
@@ -665,13 +666,13 @@ def deriv_consumed(r, a):
             smart_concat(nullable(r.re1), d2)),
                 s1 + (s2 if nullable(r.re1) == re_epsilon() else []))
     elif isinstance(r, re_alter):
-        dslist = map(lambda x: deriv_consumed(x, a), r.re_list)
+        dslist = [deriv_consumed(x, a) for x in r.re_list]
         return (foldl(lambda rs, s: smart_alter(rs, s[0]),
                       dslist, re_empty()),
                 foldl(lambda ss, s: ss + s[1],
                       dslist, []))
     elif isinstance(r, re_inters):
-        dslist = map(lambda x: deriv_consumed(x, a), r.re_list)
+        dslist = [deriv_consumed(x, a) for x in r.re_list]
         """ The union of the consumed symbol list is just one
         interpretation; other interpretations are possible.
         """
@@ -758,14 +759,14 @@ class dfa_transition_table(object):
     def contains_state(self, state):
         """ Return True if the DFA contains the argument state. """
         assert self.state_type_check_fun(state, self.state_type)
-        return state in self.re_to_transitions.keys()
+        return state in list(self.re_to_transitions.keys())
 
     def lookup_state_symbol(self, q, c):
         """ Lookup a transition from state `q` on symbol `c` """
         assert self.state_type_check_fun(q, self.state_type)
         assert self.symbol_type_check_fun(c, self.symbol_type)
-        if q in self.re_to_transitions.keys():
-            if c in self.re_to_transitions[q].keys():
+        if q in list(self.re_to_transitions.keys()):
+            if c in list(self.re_to_transitions[q].keys()):
                 return self.re_to_transitions[q][c]
         return None
 
@@ -774,7 +775,7 @@ class dfa_transition_table(object):
         (g). This function also uses a numeric mapping from the state to a
         number provided in re_map.
         """
-        for state in self.re_to_transitions.keys():
+        for state in list(self.re_to_transitions.keys()):
             tt_entry = self.re_to_transitions[state]
             src = get_state_label(re_map[state], state)
             for symbol in tt_entry:
@@ -784,10 +785,10 @@ class dfa_transition_table(object):
 
     def __repr__(self):
         out = ''
-        for state in self.re_to_transitions.keys():
+        for state in list(self.re_to_transitions.keys()):
             out += "** Transitions from state " + repr(state) + '\n'
             tt_entry = self.re_to_transitions[state]
-            for edge in tt_entry.keys():
+            for edge in list(tt_entry.keys()):
                 out += (repr(state) + "  ---> " + repr(edge) +
                         " ---> " + repr(tt_entry[edge]) + '\n')
         return out
@@ -836,7 +837,7 @@ class re_transition_table(dfa_transition_table):
         create_meta_list_if_not_exists(self.transition_to_metadata,
                                        state, symbol)
         meta_list = self.transition_to_metadata[state][symbol]
-        map(lambda x: add_single_metadata(meta_list, x), metadata_objs)
+        list(map(lambda x: add_single_metadata(meta_list, x), metadata_objs))
 
     def get_metadata(self, q, s):
         """ Get list of metadata of the objects corresponding to the transition
@@ -849,10 +850,10 @@ class re_transition_table(dfa_transition_table):
 
     def __repr__(self):
         out = ''
-        for state in self.re_to_transitions.keys():
+        for state in list(self.re_to_transitions.keys()):
             out += "** Transitions from state " + state.re_string_repr() + '\n'
             tt_entry = self.re_to_transitions[state]
-            for edge in tt_entry.keys():
+            for edge in list(tt_entry.keys()):
                 out += (state.re_string_repr() + "  ---> " + repr(edge) +
                         " ---> " + tt_entry[edge].re_string_repr() + '\n')
                 out += ("      on reading metadata: " +
@@ -912,7 +913,7 @@ class dfa_state_table(object):
         """ Add all the states in the pydot graph object provided (g). Requires
         pydot import to successfully work at module startup.
         """
-        for q in self.re_map.keys():
+        for q in list(self.re_map.keys()):
             qi = str(self.re_map[q])
             if self.final_state_check_fun(q):
                 qshape = 'doublecircle'
@@ -1155,8 +1156,7 @@ def typecheck_goto(q, c, tt, states, alphabet_list,
     assert isinstance(c, str) and len(c) == 1
     assert isinstance(tt, tt_type)
     assert isinstance(states, states_table_type)
-    assert (len(filter(lambda x: isinstance(x, str) and len(x) == 1,
-                       alphabet_list))
+    assert (len([x for x in alphabet_list if isinstance(x, str) and len(x) == 1])
             == len(alphabet_list))
 
 def goto(q, c, tt, states, alphabet_list):
@@ -1183,8 +1183,7 @@ def typecheck_explore(states, tt, q, alphabet_list, state_table_type, tt_type,
     assert isinstance(states, state_table_type)
     assert isinstance(tt, tt_type)
     assert state_type_check_fun(q, state_type)
-    assert (len(filter(lambda x: isinstance(x, str) and len(x) == 1,
-                       alphabet_list))
+    assert (len([x for x in alphabet_list if isinstance(x, str) and len(x) == 1])
             == len(alphabet_list))
 
 def explore(states, tt, q, alphabet_list):
@@ -1343,8 +1342,7 @@ def makeDFA_vector(re_list, alphabet_list):
     assert list_isinstance(re_list, re_deriv)
     if len(re_list) == 0:
         return make_null_DFA()
-    component_dfas = tuple_from_list(map(lambda x: makeDFA(x, alphabet_list),
-                                         re_list))
+    component_dfas = tuple_from_list([makeDFA(x, alphabet_list) for x in re_list])
     q0 = tuple_from_list(re_list)
     tt = re_vector_transition_table(component_dfas)
     states = re_vector_state_table([q0])

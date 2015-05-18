@@ -69,7 +69,7 @@ class BackendChannel(asynchat.async_chat):
         return
 
     def handle_connect(self):
-        print "Connected to pyretic frontend."
+        print("Connected to pyretic frontend.")
         
     def collect_incoming_data(self, data):
         """Read an incoming message from the client and put it into our outgoing queue."""
@@ -89,7 +89,7 @@ class BackendChannel(asynchat.async_chat):
                 return None
             else:
                 return val
-        return { h : convert(h,val) for (h, val) in d.items()}
+        return { h : convert(h,val) for (h, val) in list(d.items())}
 
     def found_terminator(self):
         """The end of a command or message has been seen."""
@@ -118,7 +118,7 @@ class BackendChannel(asynchat.async_chat):
         elif msg[0] == 'install' or msg[0] == 'modify':
             pred = self.dict2OF(msg[1])
             priority = int(msg[2])
-            actions = map(self.dict2OF,msg[3])
+            actions = list(map(self.dict2OF,msg[3]))
             cookie = int(msg[4])
             notify = bool(msg[5])
             if msg[0] == 'install':
@@ -140,7 +140,7 @@ class BackendChannel(asynchat.async_chat):
             switch = msg[1]
             self.of_client.flow_stats_request(switch)
         else:
-            print "ERROR: Unknown msg from frontend %s" % msg
+            print("ERROR: Unknown msg from frontend %s" % msg)
 
 
 class POXClient(revent.EventMixin):
@@ -172,7 +172,7 @@ class POXClient(revent.EventMixin):
 
     def active_ofp_port_config(self,configs):
         active = []
-        for (config,bit) in of.ofp_port_config_rev_map.items():
+        for (config,bit) in list(of.ofp_port_config_rev_map.items()):
             if configs & bit:
                 active.append(config)
         return active
@@ -181,41 +181,41 @@ class POXClient(revent.EventMixin):
         """get active ofp port state values
         NOTE: POX's doesn't match ofp_port_state_rev_map"""
         active = []
-        for (state,bit) in of.ofp_port_state_rev_map.items():
+        for (state,bit) in list(of.ofp_port_state_rev_map.items()):
             if states & bit:
                 active.append(state)
         return active
 
     def active_ofp_port_features(self,features):
         active = []
-        for (feature,bit) in of.ofp_port_features_rev_map.items():
+        for (feature,bit) in list(of.ofp_port_features_rev_map.items()):
             if features & bit:
                 active.append(feature)
         return active
 
     def inspect_ofp_phy_port(self,port,prefix=""):
-        print "%sport_no:     " % prefix, 
+        print("%sport_no:     " % prefix, end=' ') 
         port_id = port.port_no
-        for name,port_no in of.ofp_port_rev_map.iteritems():
+        for name,port_no in of.ofp_port_rev_map.items():
             if port.port_no == port_no:
                 port_id = name
-        print port_id
-        print "%shw_addr:     " % prefix, 
-        print port.hw_addr
-        print "%sname:        " % prefix, 
-        print port.name
-        print "%sconfig:      " % prefix, 
-        print self.active_ofp_port_config(port.config)
-        print "%sstate:       " % prefix, 
-        print self.active_ofp_port_state(port.state)
-        print "%scurr:        " % prefix, 
-        print self.active_ofp_port_features(port.curr)
-        print "%sadvertised:  " % prefix, 
-        print self.active_ofp_port_features(port.advertised)
-        print "%ssupported:   " % prefix, 
-        print self.active_ofp_port_features(port.supported)
-        print "%speer:        " % prefix, 
-        print self.active_ofp_port_features(port.peer)
+        print(port_id)
+        print("%shw_addr:     " % prefix, end=' ') 
+        print(port.hw_addr)
+        print("%sname:        " % prefix, end=' ') 
+        print(port.name)
+        print("%sconfig:      " % prefix, end=' ') 
+        print(self.active_ofp_port_config(port.config))
+        print("%sstate:       " % prefix, end=' ') 
+        print(self.active_ofp_port_state(port.state))
+        print("%scurr:        " % prefix, end=' ') 
+        print(self.active_ofp_port_features(port.curr))
+        print("%sadvertised:  " % prefix, end=' ') 
+        print(self.active_ofp_port_features(port.advertised))
+        print("%ssupported:   " % prefix, end=' ') 
+        print(self.active_ofp_port_features(port.supported))
+        print("%speer:        " % prefix, end=' ') 
+        print(self.active_ofp_port_features(port.peer))
 
 
     def create_discovery_packet (self, dpid, port_num, port_addr):
@@ -224,14 +224,14 @@ class POXClient(revent.EventMixin):
         """
         import pox.lib.packet as pkt
         chassis_id = pkt.chassis_id(subtype=pkt.chassis_id.SUB_LOCAL)
-        chassis_id.id = bytes('dpid:' + hex(long(dpid))[2:-1])
+        chassis_id.id = bytes('dpid:' + hex(int(dpid))[2:-1])
         
         port_id = pkt.port_id(subtype=pkt.port_id.SUB_PORT, id=str(port_num))
 
         ttl = pkt.ttl(ttl = 120)
 
         sysdesc = pkt.system_description()
-        sysdesc.payload = bytes('dpid:' + hex(long(dpid))[2:-1])
+        sysdesc.payload = bytes('dpid:' + hex(int(dpid))[2:-1])
 
         discovery_packet = pkt.lldp()
         discovery_packet.tlvs.append(chassis_id)
@@ -265,7 +265,7 @@ class POXClient(revent.EventMixin):
             with self.channel_lock:
                 self.backend_channel.push(serialized_msg)
         except IndexError as e:
-            print "ERROR PUSHING MESSAGE %s" % msg
+            print("ERROR PUSHING MESSAGE %s" % msg)
             pass
 
 
@@ -285,19 +285,19 @@ class POXClient(revent.EventMixin):
         msg.actions.append(of.ofp_action_output(port = outport))
  
         if self.show_traces:
-            print "========= POX/OF SEND ================"
-            print msg
-            print packetlib.ethernet(msg._get_data())
-            print
+            print("========= POX/OF SEND ================")
+            print(msg)
+            print(packetlib.ethernet(msg._get_data()))
+            print()
 
         ## HANDLE PACKETS SEND ON LINKS THAT HAVE TIMED OUT
         try:
             self.switches[switch]['connection'].send(msg)
-        except RuntimeError, e:
-            print "ERROR:send_to_switch: %s to switch %d" % (str(e),switch)
+        except RuntimeError as e:
+            print("ERROR:send_to_switch: %s to switch %d" % (str(e),switch))
             # TODO - ATTEMPT TO RECONNECT SOCKET
-        except KeyError, e:
-            print "ERROR:send_to_switch: No connection to switch %d available" % switch
+        except KeyError as e:
+            print("ERROR:send_to_switch: No connection to switch %d available" % switch)
             # TODO - IF SOCKET RECONNECTION, THEN WAIT AND RETRY
 
     def build_of_match(self,switch,inport,pred):
@@ -404,10 +404,10 @@ class POXClient(revent.EventMixin):
                                   actions=of_actions)
         try:
             self.switches[switch]['connection'].send(msg)
-        except RuntimeError, e:
-            print "WARNING:install_flow: %s to switch %d" % (str(e),switch)
-        except KeyError, e:
-            print "WARNING:install_flow: No connection to switch %d available" % switch
+        except RuntimeError as e:
+            print("WARNING:install_flow: %s to switch %d" % (str(e),switch))
+        except KeyError as e:
+            print("WARNING:install_flow: No connection to switch %d available" % switch)
 
     def install_flow(self,pred,priority,action_list,cookie,notify):
         self.flow_mod_action(pred,priority,action_list,cookie,of.OFPFC_ADD,notify)
@@ -427,10 +427,10 @@ class POXClient(revent.EventMixin):
                               match=match)
         try:
             self.switches[switch]['connection'].send(msg)
-        except RuntimeError, e:
-            print "WARNING:delete_flow: %s to switch %d" % (str(e),switch)
-        except KeyError, e:
-            print "WARNING:delete_flow: No connection to switch %d available" % switch
+        except RuntimeError as e:
+            print("WARNING:delete_flow: %s to switch %d" % (str(e),switch))
+        except KeyError as e:
+            print("WARNING:delete_flow: No connection to switch %d available" % switch)
 
     def barrier(self,switch):
         b = of.ofp_barrier_request()
@@ -445,13 +445,13 @@ class POXClient(revent.EventMixin):
         sr.body.out_port = of.OFPP_NONE
         try:
             self.switches[switch]['connection'].send(sr)
-        except KeyError, e:
-            print ( ("ERROR:flow_stats_request: No connection to switch %d" +
-                     " available") % switch )
+        except KeyError as e:
+            print(( ("ERROR:flow_stats_request: No connection to switch %d" +
+                     " available") % switch ))
     
     def clear(self,switch=None):
         if switch is None:
-            for switch in self.switches.keys():
+            for switch in list(self.switches.keys()):
                 self.clear(switch)
         else:
             d = of.ofp_flow_mod(command = of.OFPFC_DELETE)
@@ -723,13 +723,13 @@ class POXClient(revent.EventMixin):
 
         if self.show_traces:
             self.packetno += 1
-            print "-------- POX/OF RECV %d ---------------" % self.packetno
-            print event.connection
-            print event.ofp
-            print "port\t%s" % event.port
-            print "data\t%s" % packetlib.ethernet(event.data)
-            print "dpid\t%s" % event.dpid
-            print
+            print("-------- POX/OF RECV %d ---------------" % self.packetno)
+            print(event.connection)
+            print(event.ofp)
+            print("port\t%s" % event.port)
+            print("data\t%s" % packetlib.ethernet(event.data))
+            print("dpid\t%s" % event.dpid)
+            print()
 
         received = self.packet_from_network(switch=event.dpid, inport=event.ofp.in_port, raw=event.data)
         self.send_to_pyretic(['packet',received])

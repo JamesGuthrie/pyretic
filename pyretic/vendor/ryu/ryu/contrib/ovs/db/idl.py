@@ -119,8 +119,8 @@ class Idl:
         self.txn = None
         self._outstanding_txns = {}
 
-        for table in schema.tables.itervalues():
-            for column in table.columns.itervalues():
+        for table in schema.tables.values():
+            for column in table.columns.values():
                 if not hasattr(column, 'alert'):
                     column.alert = True
             table.need_table = False
@@ -186,7 +186,7 @@ class Idl:
                     self._monitor_request_id = None
                     self.__clear()
                     self.__parse_update(msg.result)
-                except error.Error, e:
+                except error.Error as e:
                     vlog.err("%s: parse error in received schema: %s"
                               % (self._session.get_name(), e))
                     self.__error()
@@ -267,7 +267,7 @@ class Idl:
     def __clear(self):
         changed = False
 
-        for table in self.tables.itervalues():
+        for table in self.tables.values():
             if table.rows:
                 changed = True
                 table.rows = {}
@@ -322,8 +322,8 @@ class Idl:
 
     def __send_monitor_request(self):
         monitor_requests = {}
-        for table in self.tables.itervalues():
-            monitor_requests[table.name] = {"columns": table.columns.keys()}
+        for table in self.tables.values():
+            monitor_requests[table.name] = {"columns": list(table.columns.keys())}
         msg = ovs.jsonrpc.Message.create_request(
             "monitor", [self._db.name, None, monitor_requests])
         self._monitor_request_id = msg.id
@@ -332,7 +332,7 @@ class Idl:
     def __parse_update(self, update):
         try:
             self.__do_parse_update(update)
-        except error.Error, e:
+        except error.Error as e:
             vlog.err("%s: error parsing update: %s"
                      % (self._session.get_name(), e))
 
@@ -341,7 +341,7 @@ class Idl:
             raise error.Error("<table-updates> is not an object",
                               table_updates)
 
-        for table_name, table_update in table_updates.iteritems():
+        for table_name, table_update in table_updates.items():
             table = self.tables.get(table_name)
             if not table:
                 raise error.Error('<table-updates> includes unknown '
@@ -351,7 +351,7 @@ class Idl:
                 raise error.Error('<table-update> for table "%s" is not '
                                   'an object' % table_name, table_update)
 
-            for uuid_string, row_update in table_update.iteritems():
+            for uuid_string, row_update in table_update.items():
                 if not ovs.ovsuuid.is_valid_string(uuid_string):
                     raise error.Error('<table-update> for table "%s" '
                                       'contains bad UUID "%s" as member '
@@ -414,7 +414,7 @@ class Idl:
 
     def __row_update(self, table, row, row_json):
         changed = False
-        for column_name, datum_json in row_json.iteritems():
+        for column_name, datum_json in row_json.items():
             column = table.columns.get(column_name)
             if not column:
                 # XXX rate-limit
@@ -424,7 +424,7 @@ class Idl:
 
             try:
                 datum = ovs.db.data.Datum.from_json(column.type, datum_json)
-            except error.Error, e:
+            except error.Error as e:
                 # XXX rate-limit
                 vlog.warn("error parsing column %s in table %s: %s"
                           % (column_name, table.name, e))
@@ -442,7 +442,7 @@ class Idl:
 
     def __create_row(self, table, uuid):
         data = {}
-        for column in table.columns.itervalues():
+        for column in table.columns.values():
             data[column.name] = ovs.db.data.Datum.default(column.type)
         row = table.rows[uuid] = Row(self, table, uuid, data)
         return row
@@ -563,7 +563,7 @@ class Row(object):
         try:
             datum = ovs.db.data.Datum.from_python(column.type, value,
                                                   _row_to_uuid)
-        except error.Error, e:
+        except error.Error as e:
             # XXX rate-limit
             vlog.err("attempting to write bad value to column %s (%s)"
                      % (column_name, e))
@@ -768,7 +768,7 @@ class Transaction(object):
     def __disassemble(self):
         self.idl.txn = None
 
-        for row in self._txn_rows.itervalues():
+        for row in self._txn_rows.values():
             if row._changes is None:
                 row._table.rows[row.uuid] = row
             elif row._data is None:
@@ -847,7 +847,7 @@ class Transaction(object):
                                "lock": self.idl.lock_name})
 
         # Add prerequisites and declarations of new rows.
-        for row in self._txn_rows.itervalues():
+        for row in self._txn_rows.values():
             if row._prereqs:
                 rows = {}
                 columns = []
@@ -864,7 +864,7 @@ class Transaction(object):
 
         # Add updates.
         any_updates = False
-        for row in self._txn_rows.itervalues():
+        for row in self._txn_rows.values():
             if row._changes is None:
                 if row._table.is_root:
                     operations.append({"op": "delete",
@@ -890,7 +890,7 @@ class Transaction(object):
                 row_json = {}
                 op["row"] = row_json
 
-                for column_name, datum in row._changes.iteritems():
+                for column_name, datum in row._changes.items():
                     if row._data is not None or not datum.is_default():
                         row_json[column_name] = (
                                 self._substitute_uuids(datum.to_json()))
@@ -1099,7 +1099,7 @@ class Transaction(object):
                 if self._inc_row and not self.__process_inc_reply(ops):
                     hard_errors = True
 
-                for insert in self._inserted_rows.itervalues():
+                for insert in self._inserted_rows.values():
                     if not self.__process_insert_reply(insert, ops):
                         hard_errors = True
 
@@ -1136,7 +1136,7 @@ class Transaction(object):
         # __process_reply() already checked.
         mutate = ops[self._inc_index]
         count = mutate.get("count")
-        if not Transaction.__check_json_type(count, (int, long),
+        if not Transaction.__check_json_type(count, (int, int),
                                              '"mutate" reply "count"'):
             return False
         if count != 1:
@@ -1159,7 +1159,7 @@ class Transaction(object):
                                              '"select" reply row'):
             return False
         column = row.get(self._inc_column)
-        if not Transaction.__check_json_type(column, (int, long),
+        if not Transaction.__check_json_type(column, (int, int),
                                              '"select" reply inc column'):
             return False
         self._inc_new_value = column
@@ -1261,7 +1261,7 @@ class SchemaHelper(object):
 
         if not self._all:
             schema_tables = {}
-            for table, columns in self._tables.iteritems():
+            for table, columns in self._tables.items():
                 schema_tables[table] = (
                     self._keep_table_columns(schema, table, columns))
 

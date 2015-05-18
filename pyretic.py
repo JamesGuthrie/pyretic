@@ -47,15 +47,15 @@ of_client = None
 enable_profile = False
 
 def signal_handler(signal, frame):
-    print '\n----starting pyretic shutdown------'
+    print('\n----starting pyretic shutdown------')
     # for thread in threading.enumerate():
     #     print (thread,thread.isAlive())
-    print "attempting to kill of_client"
+    print("attempting to kill of_client")
     of_client.kill()
     # print "attempting get output of of_client:"
     # output = of_client.communicate()[0]
     # print output
-    print "pyretic.py done"
+    print("pyretic.py done")
     # Print profile information if enabled
     if enable_profile:
         funcstats = yappi.get_func_stats()
@@ -125,20 +125,20 @@ def main():
     try:
         module_name = args[0]
     except IndexError:
-        print 'Module must be specified'
-        print ''
+        print('Module must be specified')
+        print('')
         op.print_usage()
         sys.exit(1)
     try:
         module = import_module(module_name)
-    except ImportError, e:
-        print 'Must be a valid python module'
-        print 'e.g, full module name,'
-        print '     no .py suffix,'
-        print '     located on the system PYTHONPATH'
-        print ''
-        print 'Exception message for ImportError was:'
-        print e
+    except ImportError as e:
+        print('Must be a valid python module')
+        print('e.g, full module name,')
+        print('     no .py suffix,')
+        print('     located on the system PYTHONPATH')
+        print('')
+        print('Exception message for ImportError was:')
+        print(e)
         sys.exit(1)
 
     main = module.main
@@ -169,8 +169,8 @@ def main():
         while(True):
             try:
                 to_log = queue.get()
-            except KeyboardInterrupt, e:
-                print "\nkilling log"
+            except KeyboardInterrupt as e:
+                print("\nkilling log")
                 import sys
                 sys.exit(0)
             logger.handle(to_log)

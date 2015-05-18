@@ -95,22 +95,22 @@ class frozendict(object):
         return key in self._dict
 
     def keys(self):
-        return self._dict.keys()
+        return list(self._dict.keys())
 
     def values(self):
-        return self._dict.values()
+        return list(self._dict.values())
         
     def items(self):
-        return self._dict.items()
+        return list(self._dict.items())
 
     def iterkeys(self):
-        return self._dict.iterkeys()
+        return iter(self._dict.keys())
 
     def itervalues(self):
-        return self._dict.itervalues()
+        return iter(self._dict.values())
         
     def iteritems(self):
-        return self._dict.iteritems()
+        return iter(self._dict.items())
 
     def get(self, key, default=None):
         return self._dict.get(key, default)
@@ -122,7 +122,7 @@ class frozendict(object):
         try:
             return self._cached_hash
         except AttributeError:
-            h = self._cached_hash = hash(frozenset(self._dict.items()))
+            h = self._cached_hash = hash(frozenset(list(self._dict.items())))
             return h
         
     def __eq__(self, other):
@@ -140,7 +140,7 @@ def indent_str(s, indent=4):
 
 
 def repr_plus(ss, indent=4, sep="\n", prefix=""):
-    if isinstance(ss, basestring):
+    if isinstance(ss, str):
         ss = [ss]
     return indent_str(sep.join(prefix + repr(s) for s in ss), indent)    
 

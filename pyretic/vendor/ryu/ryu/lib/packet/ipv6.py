@@ -142,10 +142,8 @@ ipv6.register_packet_type(udp.udp, inet.IPPROTO_UDP)
 ipv6.register_packet_type(sctp.sctp, inet.IPPROTO_SCTP)
 
 
-class header(stringify.StringifyMixin):
+class header(stringify.StringifyMixin, metaclass=abc.ABCMeta):
     """extension header abstract class."""
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, nxt):
         self.nxt = nxt

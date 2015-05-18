@@ -16,13 +16,13 @@ import os
 import socket
 import getpass
 from binascii import hexlify
-from cStringIO import StringIO
+from io import StringIO
 from select import select
 
 import paramiko
 
-from errors import AuthenticationError, SessionCloseError, SSHError, SSHUnknownHostError
-from session import Session
+from .errors import AuthenticationError, SessionCloseError, SSHError, SSHUnknownHostError
+from .session import Session
 
 import logging
 logger = logging.getLogger("ncclient.transport.ssh")
@@ -194,7 +194,7 @@ class SSHSession(Session):
 
         if key_filename is None:
             key_filenames = []
-        elif isinstance(key_filename, basestring):
+        elif isinstance(key_filename, str):
             key_filenames = [ key_filename ]
         else:
             key_filenames = key_filename

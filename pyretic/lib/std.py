@@ -85,7 +85,7 @@ class _print(Policy):
         raise NotImplementedError
 
     def eval(self,pkt):
-        print self.print_str(pkt)
+        print(self.print_str(pkt))
         return {pkt}
 
     def __repr__(self):

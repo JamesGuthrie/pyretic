@@ -37,13 +37,13 @@ import inspect
 # grep __init__ *.py | grep '[^_]_\>' showed that
 # 'len', 'property', 'set', 'type'
 # A bit more generic way is adopted
-import __builtin__
+import builtins
 _RESERVED_KEYWORD = dir(__builtin__)
 
 
-_mapdict = lambda f, d: dict([(k, f(v)) for k, v in d.items()])
-_mapdict_key = lambda f, d: dict([(f(k), v) for k, v in d.items()])
-_mapdict_kv = lambda f, d: dict([(k, f(k, v)) for k, v in d.items()])
+_mapdict = lambda f, d: dict([(k, f(v)) for k, v in list(d.items())])
+_mapdict_key = lambda f, d: dict([(f(k), v) for k, v in list(d.items())])
+_mapdict_kv = lambda f, d: dict([(k, f(k, v)) for k, v in list(d.items())])
 
 
 class TypeDescr(object):
@@ -53,7 +53,7 @@ class TypeDescr(object):
 class AsciiStringType(TypeDescr):
     @staticmethod
     def encode(v):
-        return unicode(v, 'ascii')
+        return str(v, 'ascii')
 
     @staticmethod
     def decode(v):
@@ -63,7 +63,7 @@ class AsciiStringType(TypeDescr):
 class Utf8StringType(TypeDescr):
     @staticmethod
     def encode(v):
-        return unicode(v, 'utf-8')
+        return str(v, 'utf-8')
 
     @staticmethod
     def decode(v):
@@ -127,8 +127,8 @@ class StringifyMixin(object):
         assert isinstance(dict_, dict)
         if len(dict_) != 1:
             return False
-        k = dict_.keys()[0]
-        if not isinstance(k, (bytes, unicode)):
+        k = list(dict_.keys())[0]
+        if not isinstance(k, (bytes, str)):
             return False
         for p in cls._class_prefixes:
             if k.startswith(p):
@@ -138,7 +138,7 @@ class StringifyMixin(object):
     @classmethod
     def _get_type(cls, k):
         if hasattr(cls, '_TYPE'):
-            for t, attrs in cls._TYPE.iteritems():
+            for t, attrs in cls._TYPE.items():
                 if k in attrs:
                     return _types[t]
         return None
@@ -157,10 +157,10 @@ class StringifyMixin(object):
     @classmethod
     def _get_default_encoder(cls, encode_string):
         def _encode(v):
-            if isinstance(v, (bytes, unicode)):
+            if isinstance(v, (bytes, str)):
                 json_value = encode_string(v)
             elif isinstance(v, list):
-                json_value = map(_encode, v)
+                json_value = list(map(_encode, v))
             elif isinstance(v, dict):
                 json_value = _mapdict(_encode, v)
                 # while a python dict key can be any hashable object,
@@ -218,7 +218,7 @@ class StringifyMixin(object):
     @classmethod
     def obj_from_jsondict(cls, jsondict):
         assert len(jsondict) == 1
-        for k, v in jsondict.iteritems():
+        for k, v in jsondict.items():
             obj_cls = cls.cls_from_jsondict_key(k)
             return obj_cls.from_jsondict(v)
 
@@ -236,10 +236,10 @@ class StringifyMixin(object):
     @classmethod
     def _get_default_decoder(cls, decode_string):
         def _decode(json_value):
-            if isinstance(json_value, (bytes, unicode)):
+            if isinstance(json_value, (bytes, str)):
                 v = decode_string(json_value)
             elif isinstance(json_value, list):
-                v = map(_decode, json_value)
+                v = list(map(_decode, json_value))
             elif isinstance(json_value, dict):
                 if cls._is_class(json_value):
                     v = cls.obj_from_jsondict(json_value)
@@ -293,9 +293,9 @@ class StringifyMixin(object):
             return cls(**dict(kwargs, **additional_args))
         except TypeError:
             #debug
-            print "CLS", cls
-            print "ARG", dict_
-            print "KWARG", kwargs
+            print("CLS", cls)
+            print("ARG", dict_)
+            print("KWARG", kwargs)
             raise
 
 
@@ -313,7 +313,7 @@ def obj_python_attrs(msg_):
     for k, v in inspect.getmembers(msg_):
         if k.startswith('_'):
             continue
-        if callable(v):
+        if isinstance(v, collections.Callable):
             continue
         if k in base:
             continue

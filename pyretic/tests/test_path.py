@@ -160,8 +160,8 @@ def test_CG_equal_matches():
     a2 = atom(m2)
 
     generate_re_trees([a1, a2])
-    assert len(in_cg.pred_to_symbol.keys()) == 1
-    assert len(out_cg.pred_to_symbol.keys()) == 1
+    assert len(list(in_cg.pred_to_symbol.keys())) == 1
+    assert len(list(out_cg.pred_to_symbol.keys())) == 1
     ms = [match(srcip=ip1)]
     in_syms  = assert_and_get_syms(ms, in_cg)
     out_syms = assert_and_get_syms([identity], out_cg)
@@ -189,8 +189,8 @@ def test_CG_unequal_matches():
     a2 = out_atom(m1)
     generate_re_trees([a1, a2])
 
-    assert len(in_cg.pred_to_symbol.keys()) == 2
-    assert len(out_cg.pred_to_symbol.keys()) == 2
+    assert len(list(in_cg.pred_to_symbol.keys())) == 2
+    assert len(list(out_cg.pred_to_symbol.keys())) == 2
     in_syms  = assert_and_get_syms([m1, identity & ~m1], in_cg)
     out_syms = assert_and_get_syms([m1, identity & ~m1], out_cg)
 
@@ -215,8 +215,8 @@ def test_CG_superset_matches():
     a2 = atom(m2)
 
     generate_re_trees([a1, a2])
-    assert len(in_cg.pred_to_symbol.keys()) == 2
-    assert len(out_cg.pred_to_symbol.keys()) == 1
+    assert len(list(in_cg.pred_to_symbol.keys())) == 2
+    assert len(list(out_cg.pred_to_symbol.keys())) == 1
     ms = [match(srcip=ip1) & match(switch=2),
           match(srcip=ip1) & ~(match(srcip=ip1) & match(switch=2))]
 
@@ -243,8 +243,8 @@ def test_CG_subset_matches():
     a2 = atom(m2)
 
     generate_re_trees([a1, a2])
-    assert len(in_cg.pred_to_symbol.keys()) == 2
-    assert len(out_cg.pred_to_symbol.keys()) == 1
+    assert len(list(in_cg.pred_to_symbol.keys())) == 2
+    assert len(list(out_cg.pred_to_symbol.keys())) == 1
 
     ms = [(match(srcip=ip1, switch=2)),
           (match(srcip=ip1) & ~match(srcip=ip1, switch=2))]
@@ -273,8 +273,8 @@ def test_CG_intersection_matches_1():
     a2 = out_atom(m2)
 
     generate_re_trees([a1, a2])
-    assert len(out_cg.pred_to_symbol.keys()) == 3
-    assert len(in_cg.pred_to_symbol.keys()) == 1
+    assert len(list(out_cg.pred_to_symbol.keys())) == 3
+    assert len(list(in_cg.pred_to_symbol.keys())) == 1
     ms = [(match(srcip=ip1) & ~match(dstip=ip2)),
           (match(dstip=ip2) & ~match(srcip=ip1)),
           (match(srcip=ip1) & match(dstip=ip2))]
@@ -306,8 +306,8 @@ def test_CG_intersection_matches_2():
     a3 = atom(m3)
 
     generate_re_trees([a1, a2, a3])
-    assert len(in_cg.pred_to_symbol.keys()) == 2
-    assert len(out_cg.pred_to_symbol.keys()) == 1
+    assert len(list(in_cg.pred_to_symbol.keys())) == 2
+    assert len(list(out_cg.pred_to_symbol.keys())) == 1
     ms = [match(srcip=ip1),
           match(srcip=ip2)]
 
@@ -846,8 +846,8 @@ if __name__ == "__main__":
 
     test_ast_fold()
 
-    print "If this message is printed without errors before it, we're good."
-    print "Also ensure all unit tests are listed above this line in the source."
+    print("If this message is printed without errors before it, we're good.")
+    print("Also ensure all unit tests are listed above this line in the source.")
     sys.exit(0)
 
     # XXX: legacy tests from old token generator remain

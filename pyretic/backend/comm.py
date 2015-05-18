@@ -44,12 +44,12 @@ def serialize(msg):
 
 def deserialize(serialized_msgs):
     def json2python(item):
-        if isinstance(item, unicode):
+        if isinstance(item, str):
             return item.encode('ascii')
         elif isinstance(item, dict):
             return bytelist2ascii({ 
                     json2python(k) : json2python(v) 
-                    for (k,v) in item.items() })
+                    for (k,v) in list(item.items()) })
         elif isinstance(item, list):
             return [ json2python(l)
                      for l in item ]
@@ -78,7 +78,7 @@ def dict_to_ascii(d):
             return v
         else:
             return repr(v)
-    return { h : convert(h,v) for (h,v) in d.items() }
+    return { h : convert(h,v) for (h,v) in list(d.items()) }
 
 
 def bytelist2ascii(packet_dict):
@@ -87,7 +87,7 @@ def bytelist2ascii(packet_dict):
             return ''.join([chr(d) for d in val])
         else:
             return val
-    return { h : convert(h,val) for (h, val) in packet_dict.items()}
+    return { h : convert(h,val) for (h, val) in list(packet_dict.items())}
 
 
 def ascii2bytelist(packet_dict):
@@ -96,7 +96,7 @@ def ascii2bytelist(packet_dict):
             return [ord(c) for c in val]
         else:
             return val
-    return { h : convert(h,val) for (h, val) in packet_dict.items()}
+    return { h : convert(h,val) for (h, val) in list(packet_dict.items())}
 
 
 def to_jsonable_format(item):
@@ -105,6 +105,6 @@ def to_jsonable_format(item):
         bytelist_item = ascii2bytelist(ascii_item)
         return bytelist_item
     elif isinstance(item, list):
-        return map(to_jsonable_format,item)
+        return list(map(to_jsonable_format,item))
     else:
         return item

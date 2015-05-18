@@ -55,4 +55,4 @@ def haddr_to_bin(string):
 
 def haddr_bitand(addr, mask):
     return ''.join(chr(ord(a) & ord(m)) for (a, m)
-                   in itertools.izip(addr, mask))
+                   in zip(addr, mask))

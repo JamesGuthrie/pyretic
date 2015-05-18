@@ -17,9 +17,8 @@ import abc
 from ryu.lib import stringify
 
 
-class PacketBase(stringify.StringifyMixin):
+class PacketBase(stringify.StringifyMixin, metaclass=abc.ABCMeta):
     """A base class for a protocol (ethernet, ipv4, ...) header."""
-    __metaclass__ = abc.ABCMeta
     _TYPES = {}
 
     @classmethod

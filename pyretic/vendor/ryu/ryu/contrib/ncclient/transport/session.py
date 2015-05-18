@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from Queue import Queue
+from queue import Queue
 from threading import Thread, Lock, Event
 
 from ncclient.xml_ import *
 from ncclient.capabilities import Capabilities
 
-from errors import TransportError
+from .errors import TransportError
 
 import logging
 logger = logging.getLogger('ncclient.transport.session')
@@ -211,7 +211,7 @@ class HelloHandler(SessionListener):
         hello = new_ele("hello")
         caps = sub_ele(hello, "capabilities")
         def fun(uri): sub_ele(caps, "capability").text = uri
-        map(fun, capabilities)
+        list(map(fun, capabilities))
         return to_xml(hello)
 
     @staticmethod

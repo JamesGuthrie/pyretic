@@ -43,7 +43,7 @@ from pyretic.lib.query import *
 from pyretic.modules.mac_learner import mac_learner
 
 def print_urls(pkt, match):
-    print 'verb: %-5s | path: %-25s | version: %-3s' % match.groups()
+    print('verb: %-5s | path: %-25s | version: %-3s' % match.groups())
         
 ### Main ###
 def main():

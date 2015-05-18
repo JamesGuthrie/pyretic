@@ -39,6 +39,7 @@ from mininet.net import Mininet
 from mininet.node import CPULimitedHost, RemoteController
 from mininet.cli import CLI
 from pyretic.evaluations.mininet_setup import mn_cleanup, wait_switch_rules_installed, get_abort_handler, get_adjust_path
+from functools import reduce
 
 def pyretic_controller(ctlr_name, ctlr_params, c_out, c_err, pythonpath):
     c_outfile = open(c_out, 'w')
@@ -51,14 +52,14 @@ def pyretic_controller(ctlr_name, ctlr_params, c_out, c_err, pythonpath):
 
     cmd = ("pyretic.py -m p0 pyretic.examples." + ctlr_name + ' ' +
            reduce(lambda r, k: r + ("--" + k + "=" + ctlr_params[k] + " "),
-                  ctlr_params.keys(), " "))
+                  list(ctlr_params.keys()), " "))
     c = subprocess.Popen(shlex.split(cmd), stdout=c_outfile, stderr=c_errfile,
                          env=py_env)
     return (c, c_outfile, c_errfile)
 
 def get_mininet(topo_args, listen_port):
     """ Get a mininet network from topology arguments. """
-    class_args = map(int, topo_args['class_args'].split(','))
+    class_args = list(map(int, topo_args['class_args'].split(',')))
     class_name = topo_args['class_name']
     topo = globals()[class_name](*class_args)
     net = Mininet(topo=topo, host=CPULimitedHost, controller=RemoteController,
@@ -211,7 +212,7 @@ def test_bucket_single_test():
     mn_cleanup()
 
     """ Controller """
-    print "Setting up controller..."
+    print("Setting up controller...")
     c_params = {'query': args.query, 'fwding': args.fwding,
                 'only_count_results': 'true'}
     c_name   = args.ctlr
@@ -222,16 +223,16 @@ def test_bucket_single_test():
                                               c_errfile, pypath)
 
     """ Network """
-    print "Setting up mininet..."
+    print("Setting up mininet...")
     topo_args = {'class_name': args.topo_name, 'class_args': args.topo_args}
     (net, hosts, switches) = get_mininet(topo_args, args.listen_port)
 
     """ Wait for switches to be prepped """
-    print "Waiting to install switch rules..."
+    print("Waiting to install switch rules...")
     wait_switch_rules_installed(switches)
 
     """ Capture """
-    print "Starting tshark capture..."
+    print("Starting tshark capture...")
     t_outfile = adjust_path("tshark-stdout.txt")
     t_errfile = adjust_path("tshark-stderr.txt")
     ints_list = globals()[args.interface_map]()
@@ -240,12 +241,12 @@ def test_bucket_single_test():
     time.sleep(tshark_slack_sec)
 
     """ Workload """
-    print "Starting workload..."
+    print("Starting workload...")
     workload(net, hosts)
     time.sleep(test_duration_sec)
 
     """ Finish up """
-    print "Actual run done. Cleaning up..."
+    print("Actual run done. Cleaning up...")
     kill_process(ctlr, "controller")
     kill_process(tshark, "tshark")
     close_fds([c_out, c_err], "controller")
@@ -253,7 +254,7 @@ def test_bucket_single_test():
     net.stop()
 
     """ Verify results """
-    print "Verifying correctness..."
+    print("Verifying correctness...")
     tshark_filter_params = {'filter_funs': args.tshark_filter_funs,
                             'test_nums': args.test_nums }
     tshark_counts = get_tshark_counts(t_outfile, tshark_filter_params, c_name)
@@ -307,14 +308,14 @@ def parse_args():
 
 def kill_process(p, process_str):
     """ Kill a process """
-    print "Signaling", process_str, "for completion"
+    print("Signaling", process_str, "for completion")
     p.send_signal(signal.SIGINT)
 
 def close_fds(fds, fd_str):
     """ Close a bunch of file descriptors """
     for fd in fds:
         fd.close()
-    print "Closed", fd_str, "file descriptors"
+    print("Closed", fd_str, "file descriptors")
 
 def write_passfail_info(success_file, tshark_counts, buckets_counts, ctlr):
     if ctlr == 'bucket':
@@ -330,10 +331,10 @@ def bucket_write_passfail_info(success_file, tshark_counts, buckets_counts):
     if set(tshark_counts.keys()) != set(buckets_counts.keys()):
         output_str += "FAIL\n"
         output_str += "Query references mismatch:\n"
-        output_str += "TShark: %s\n" % str(tshark_counts.keys())
-        output_str += "Bucket: %s\n" % str(buckets_counts.keys())
+        output_str += "TShark: %s\n" % str(list(tshark_counts.keys()))
+        output_str += "Bucket: %s\n" % str(list(buckets_counts.keys()))
     elif True:
-        for q in tshark_counts.keys():
+        for q in list(tshark_counts.keys()):
             tc = tshark_counts[q]
             bc = buckets_counts[q]
             if tc != bc:
@@ -343,7 +344,7 @@ def bucket_write_passfail_info(success_file, tshark_counts, buckets_counts):
                 output_str += "Bucket: %s\n" % str(bc)
     if output_str == '':
         output_str += "PASS\n"
-    print output_str
+    print(output_str)
     passfail.write(output_str)
     passfail.close()
 
@@ -369,11 +370,11 @@ def path_query_write_passfail_info(success_file, tshark_counts, buckets_counts):
         """ Test numbers mismatch. """
         output_str += 'FAIL\n'
         output_str += 'Query references mismatch:\n'
-        output_str += 'TShark: %s\n' % str(tshark_counts.keys())
-        output_str += 'Bucket: %s\n' % str(buckets_counts.keys())
+        output_str += 'TShark: %s\n' % str(list(tshark_counts.keys()))
+        output_str += 'Bucket: %s\n' % str(list(buckets_counts.keys()))
     elif True:
         """ Per-query-test checks. """
-        for q in tshark_counts.keys():
+        for q in list(tshark_counts.keys()):
             tc = tshark_counts[q]
             bc = buckets_counts[q]
             (tc_total_pkts, tc_total_bytes) = tc['total']
@@ -396,11 +397,11 @@ def path_query_write_passfail_info(success_file, tshark_counts, buckets_counts):
                 output_str += 'FAIL\n'
                 output_str += 'Query: %s\n' % q
                 output_str += 'Groups of packets counted differ:\n'
-                output_str += 'TShark:\n%s\n' % ('\n'.join(tc.keys()))
-                output_str += 'Bucket:\n%s\n' % ('\n'.join(bc.keys()))
+                output_str += 'TShark:\n%s\n' % ('\n'.join(list(tc.keys())))
+                output_str += 'Bucket:\n%s\n' % ('\n'.join(list(bc.keys())))
                 break
             elif True:
-                for pred in tc.keys():
+                for pred in list(tc.keys()):
                     """ Check each predicate within each query. """
                     (tc_pred_pkts, tc_pred_bytes) = tc[pred]
                     (bc_pred_pkts, bc_pred_bytes) = bc[pred]
@@ -422,7 +423,7 @@ def path_query_write_passfail_info(success_file, tshark_counts, buckets_counts):
                         break
     if output_str == '':
         output_str += 'PASS\n'
-    print output_str
+    print(output_str)
     passfail.write(output_str)
     passfail.close()
 

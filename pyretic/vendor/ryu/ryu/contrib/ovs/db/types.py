@@ -37,7 +37,7 @@ class AtomicType(object):
 
     @staticmethod
     def from_json(json):
-        if type(json) not in [str, unicode]:
+        if type(json) not in [str, str]:
             raise error.Error("atomic-type expected", json)
         else:
             return AtomicType.from_string(json)
@@ -55,10 +55,10 @@ class AtomicType(object):
         return ovs.db.data.Atom(self, self.default)
 
 VoidType = AtomicType("void", None, ())
-IntegerType = AtomicType("integer", 0, (int, long))
-RealType = AtomicType("real", 0.0, (int, long, float))
+IntegerType = AtomicType("integer", 0, (int, int))
+RealType = AtomicType("real", 0.0, (int, int, float))
 BooleanType = AtomicType("boolean", False, (bool,))
-StringType = AtomicType("string", "", (str, unicode))
+StringType = AtomicType("string", "", (str, str))
 UuidType = AtomicType("uuid", ovs.ovsuuid.zero(), (uuid.UUID,))
 
 ATOMIC_TYPES = [VoidType, IntegerType, RealType, BooleanType, StringType,
@@ -113,7 +113,7 @@ def returnUnchanged(x):
 
 class BaseType(object):
     def __init__(self, type_, enum=None, min=None, max=None,
-                 min_length=0, max_length=sys.maxint, ref_table_name=None):
+                 min_length=0, max_length=sys.maxsize, ref_table_name=None):
         assert isinstance(type_, AtomicType)
         self.type = type_
         self.enum = enum
@@ -148,7 +148,7 @@ class BaseType(object):
 
     @staticmethod
     def __parse_uint(parser, name, default):
-        value = parser.get_optional(name, [int, long])
+        value = parser.get_optional(name, [int, int])
         if value is None:
             value = default
         else:
@@ -160,11 +160,11 @@ class BaseType(object):
 
     @staticmethod
     def from_json(json):
-        if type(json) in [str, unicode]:
+        if type(json) in [str, str]:
             return BaseType(AtomicType.from_json(json))
 
         parser = ovs.db.parser.Parser(json, "ovsdb type")
-        atomic_type = AtomicType.from_json(parser.get("type", [str, unicode]))
+        atomic_type = AtomicType.from_json(parser.get("type", [str, str]))
 
         base = BaseType(atomic_type)
 
@@ -173,27 +173,27 @@ class BaseType(object):
             base.enum = ovs.db.data.Datum.from_json(
                     BaseType.get_enum_type(base.type), enum)
         elif base.type == IntegerType:
-            base.min = parser.get_optional("minInteger", [int, long])
-            base.max = parser.get_optional("maxInteger", [int, long])
+            base.min = parser.get_optional("minInteger", [int, int])
+            base.max = parser.get_optional("maxInteger", [int, int])
             if (base.min is not None and base.max is not None
                     and base.min > base.max):
                 raise error.Error("minInteger exceeds maxInteger", json)
         elif base.type == RealType:
-            base.min = parser.get_optional("minReal", [int, long, float])
-            base.max = parser.get_optional("maxReal", [int, long, float])
+            base.min = parser.get_optional("minReal", [int, int, float])
+            base.max = parser.get_optional("maxReal", [int, int, float])
             if (base.min is not None and base.max is not None
                     and base.min > base.max):
                 raise error.Error("minReal exceeds maxReal", json)
         elif base.type == StringType:
             base.min_length = BaseType.__parse_uint(parser, "minLength", 0)
             base.max_length = BaseType.__parse_uint(parser, "maxLength",
-                                                    sys.maxint)
+                                                    sys.maxsize)
             if base.min_length > base.max_length:
                 raise error.Error("minLength exceeds maxLength", json)
         elif base.type == UuidType:
             base.ref_table_name = parser.get_optional("refTable", ['id'])
             if base.ref_table_name:
-                base.ref_type = parser.get_optional("refType", [str, unicode],
+                base.ref_type = parser.get_optional("refType", [str, str],
                                                    "strong")
                 if base.ref_type not in ['strong', 'weak']:
                     raise error.Error('refType must be "strong" or "weak" '
@@ -224,7 +224,7 @@ class BaseType(object):
         elif self.type == StringType:
             if self.min_length != 0:
                 json['minLength'] = self.min_length
-            if self.max_length != sys.maxint:
+            if self.max_length != sys.maxsize:
                 json['maxLength'] = self.max_length
         elif self.type == UuidType:
             if self.ref_table_name:
@@ -252,7 +252,7 @@ class BaseType(object):
     def has_constraints(self):
         return (self.enum is not None or self.min is not None or
                 self.max is not None or
-                self.min_length != 0 or self.max_length != sys.maxint or
+                self.min_length != 0 or self.max_length != sys.maxsize or
                 self.ref_table_name is not None)
 
     def without_constraints(self):
@@ -262,7 +262,7 @@ class BaseType(object):
     def get_enum_type(atomic_type):
         """Returns the type of the 'enum' member for a BaseType whose
         'type' is 'atomic_type'."""
-        return Type(BaseType(atomic_type), None, 1, sys.maxint)
+        return Type(BaseType(atomic_type), None, 1, sys.maxsize)
 
     def is_ref(self):
         return self.type == UuidType and self.ref_table_name is not None
@@ -312,7 +312,7 @@ class BaseType(object):
                 english = 'at most %s' % escapeNumber(commafy(self.max))
             else:
                 english = 'at most %s' % escapeNumber("%g" % self.max)
-        elif self.min_length != 0 and self.max_length != sys.maxint:
+        elif self.min_length != 0 and self.max_length != sys.maxsize:
             if self.min_length == self.max_length:
                 english = ('exactly %s characters long'
                            % commafy(self.min_length))
@@ -322,7 +322,7 @@ class BaseType(object):
                            commafy(self.max_length)))
         elif self.min_length != 0:
             return 'at least %s characters long' % commafy(self.min_length)
-        elif self.max_length != sys.maxint:
+        elif self.max_length != sys.maxsize:
             english = 'at most %s characters long' % commafy(self.max_length)
         else:
             english = ''
@@ -388,7 +388,7 @@ class BaseType(object):
             if self.min_length is not None:
                 stmts.append('%s.u.string.minLen = %d;'
                         % (var, self.min_length))
-            if self.max_length != sys.maxint:
+            if self.max_length != sys.maxsize:
                 stmts.append('%s.u.string.maxLen = %d;'
                         % (var, self.max_length))
         elif self.type == UuidType:
@@ -463,21 +463,21 @@ class Type(object):
     def __n_from_json(json, default):
         if json is None:
             return default
-        elif type(json) == int and 0 <= json <= sys.maxint:
+        elif type(json) == int and 0 <= json <= sys.maxsize:
             return json
         else:
             raise error.Error("bad min or max value", json)
 
     @staticmethod
     def from_json(json):
-        if type(json) in [str, unicode]:
+        if type(json) in [str, str]:
             return Type(BaseType.from_json(json))
 
         parser = ovs.db.parser.Parser(json, "ovsdb type")
-        key_json = parser.get("key", [dict, str, unicode])
-        value_json = parser.get_optional("value", [dict, str, unicode])
+        key_json = parser.get("key", [dict, str, str])
+        value_json = parser.get_optional("value", [dict, str, str])
         min_json = parser.get_optional("min", [int])
-        max_json = parser.get_optional("max", [int, str, unicode])
+        max_json = parser.get_optional("max", [int, str, str])
         parser.finish()
 
         key = BaseType.from_json(key_json)
@@ -489,7 +489,7 @@ class Type(object):
         n_min = Type.__n_from_json(min_json, Type.DEFAULT_MIN)
 
         if max_json == 'unlimited':
-            n_max = sys.maxint
+            n_max = sys.maxsize
         else:
             n_max = Type.__n_from_json(max_json, Type.DEFAULT_MAX)
 
@@ -507,7 +507,7 @@ class Type(object):
             json["value"] = self.value.to_json()
         if self.n_min != Type.DEFAULT_MIN:
             json["min"] = self.n_min
-        if self.n_max == sys.maxint:
+        if self.n_max == sys.maxsize:
             json["max"] = "unlimited"
         elif self.n_max != Type.DEFAULT_MAX:
             json["max"] = self.n_max
@@ -526,7 +526,7 @@ class Type(object):
             else:
                 return "optional %s" % keyName
         else:
-            if self.n_max == sys.maxint:
+            if self.n_max == sys.maxsize:
                 if self.n_min:
                     quantity = "%s or more " % commafy(self.n_min)
                 else:
@@ -579,7 +579,7 @@ class Type(object):
             initValue = ('%sovsdb_base_type_init(&%s.value, '
                          'OVSDB_TYPE_VOID);' % (indent, var))
         initMin = "%s%s.n_min = %s;" % (indent, var, self.n_min)
-        if self.n_max == sys.maxint:
+        if self.n_max == sys.maxsize:
             n_max = "UINT_MAX"
         else:
             n_max = self.n_max

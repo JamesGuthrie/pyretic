@@ -85,15 +85,15 @@ class QueryTest(CountBucket):
             output += self.get_matches()
             # print output
             self.pull_stats()
-            print ">>>", str(datetime.now()), ('issued query %s, sleeping for %f' %
-                                               (str(self.test_num), interval))
+            print(">>>", str(datetime.now()), ('issued query %s, sleeping for %f' %
+                                               (str(self.test_num), interval)))
             time.sleep(interval)
 
     def query_callback(self, counts):
-        print "***", str(datetime.now()), "| In user callback for bucket",
-        print self.test_num
-        print "Bucket", self.test_num, "(packet, byte) counts:", counts
-        print "-----------------------------------"
+        print("***", str(datetime.now()), "| In user callback for bucket", end=' ')
+        print(self.test_num)
+        print("Bucket", self.test_num, "(packet, byte) counts:", counts)
+        print("-----------------------------------")
 
 def test0():
     """Tests a single bucket that counts all packets.

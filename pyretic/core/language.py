@@ -45,6 +45,7 @@ from pyretic.core.util import frozendict, singleton
 
 from multiprocessing import Lock, Condition
 import copy
+from functools import reduce
 
 NO_CACHE=False
 
@@ -404,7 +405,7 @@ class match(Filter):
             """ Return true if match 'a' contains match 'b'."""
             if set(a.keys()) - set(b.keys()):
                 return False
-            for (f,v) in a.items():
+            for (f,v) in list(a.items()):
                 other_v = b[f]
                 if (f=='srcip' or f=='dstip'):
                     if v != other_v:
@@ -417,7 +418,7 @@ class match(Filter):
         try:
             return map_check(self.map, other.map)
         except AttributeError:
-            if len(self.map.keys()) == 0:
+            if len(list(self.map.keys())) == 0:
                 return True
             elif other == identity:
                 return False
@@ -426,7 +427,7 @@ class match(Filter):
         return True
 
     def __repr__(self):
-        return "match: %s" % ' '.join(map(str,self.map.items()))
+        return "match: %s" % ' '.join(map(str,list(self.map.items())))
 
 class _match(match):
     def __init__(self, *args, **kwargs):
@@ -440,7 +441,7 @@ class _match(match):
         return Classifier([r1, r2])
 
     def eval(self,pkt):
-        for field, pattern in self.map.iteritems():
+        for field, pattern in self.map.items():
             try:
                 v = pkt[field]
                 if not field in ['srcip', 'dstip']:
@@ -450,7 +451,7 @@ class _match(match):
                     v = util.string_to_IP(v)
                     if pattern is None or not v in pattern:
                         return set()
-            except Exception, e:
+            except Exception as e:
                 if pattern is not None:
                     return set()
         return {pkt}
@@ -460,7 +461,7 @@ class _match(match):
         _map = {}
         _vf  = {}
 
-        for field, pattern in self.map.iteritems():
+        for field, pattern in self.map.items():
             if field in compilable_headers:
                 _map[field] = pattern
             else:
@@ -488,7 +489,7 @@ class modify(Policy):
         self.has_virtual_headers = not \
             reduce(lambda acc, f:
                        acc and (f in compilable_headers),
-                   self.map.keys(),
+                   list(self.map.keys()),
                    True)
         self._classifier = self.generate_classifier()
         super(modify,self).__init__()
@@ -507,7 +508,7 @@ class modify(Policy):
         return _modify(**self.map).generate_classifier()
 
     def __repr__(self):
-        return "modify: %s" % ' '.join(map(str,self.map.items()))
+        return "modify: %s" % ' '.join(map(str,list(self.map.items())))
 
     def __eq__(self, other):
         return ( isinstance(other, modify)
@@ -531,7 +532,7 @@ class _modify(modify):
         _map = {}
         _vf  = {}
 
-        for field, pattern in self.map.iteritems():
+        for field, pattern in self.map.items():
             if field in compilable_headers:
                 _map[field] = pattern
             else:
@@ -968,7 +969,7 @@ class CountBucket(Query):
         """ Convert incoming flow stat matches into a form compatible with
         stored match entries. """
         new_dict = {}
-        for k,v in m.iteritems():
+        for k,v in m.items():
             if not (k == 'srcip' or k == 'dstip'):
                 new_dict[k] = v
             else:
@@ -991,7 +992,7 @@ class CountBucket(Query):
         def entries_print_helper(pfx_string=""):
             """ Pretty print bucket match entries. """
             out = ""
-            for k in self.matches.keys():
+            for k in list(self.matches.keys()):
                 out += pfx_string + str(k) + "\n"
             return out
 
@@ -1003,7 +1004,7 @@ class CountBucket(Query):
             fme = self.match_entry(self.str_convert_match(f),
                                    flow_stat['priority'],
                                    flow_stat['cookie'])
-            if fme in self.matches.keys():
+            if fme in list(self.matches.keys()):
                 return fme
             return None
 
@@ -1197,7 +1198,7 @@ class parallel(CombinatorPolicy):
     def generate_classifier(self):
         if len(self.policies) == 0:  # EMPTY PARALLEL IS A DROP
             return drop.compile()
-        classifiers = map(lambda p: p.compile(), self.policies)
+        classifiers = [p.compile() for p in self.policies]
         return reduce(lambda acc, c: acc + c, classifiers)
 
 
@@ -1287,7 +1288,7 @@ class sequential(CombinatorPolicy):
 
     def generate_classifier(self):
         assert(len(self.policies) > 0)
-        classifiers = map(lambda p: p.compile(),self.policies)
+        classifiers = [p.compile() for p in self.policies]
         for c in classifiers:
             assert(c is not None)
         return reduce(lambda acc, c: acc >> c, classifiers)
@@ -1545,7 +1546,7 @@ class flood(DynamicPolicy):
             self.log.debug("Printing updated MST:\n %s" % str(updated_mst))
             self.policy = parallel([
                 match(switch=switch) >>
-                parallel(map(xfwd,ports))
+                parallel(list(map(xfwd,ports)))
                 for switch,ports 
                 in self.mst.switch_with_port_ids_list()])
                 
@@ -1600,7 +1601,7 @@ class egress_network(DynamicFilter):
 def virtual_field_tagging():
     from pyretic.core.runtime import virtual_field
     vf_matches = {}
-    for name in virtual_field.fields.keys():
+    for name in list(virtual_field.fields.keys()):
         vf_matches[name] = None
         
     return ((
@@ -1610,7 +1611,7 @@ def virtual_field_tagging():
 def virtual_field_untagging():
     from pyretic.core.runtime import virtual_field
     vf_matches = {}
-    for name in virtual_field.fields.keys():
+    for name in list(virtual_field.fields.keys()):
         vf_matches[name] = None
 
     return ((

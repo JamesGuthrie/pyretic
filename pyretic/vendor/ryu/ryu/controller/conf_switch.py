@@ -62,14 +62,14 @@ class ConfSwitchSet(app_manager.RyuApp):
         self.confs = {}
 
     def dpids(self):
-        return self.confs.keys()
+        return list(self.confs.keys())
 
     def del_dpid(self, dpid):
         del self.confs[dpid]
         self.send_event_to_observers(EventConfSwitchDelDPID(dpid))
 
     def keys(self, dpid):
-        return self.confs[dpid].keys()
+        return list(self.confs[dpid].keys())
 
     def set_key(self, dpid, key, value):
         conf = self.confs.setdefault(dpid, {})
@@ -84,12 +84,13 @@ class ConfSwitchSet(app_manager.RyuApp):
         self.send_event_to_observers(EventConfSwitchDel(dpid, key))
 
     # methods for TunnelUpdater
-    def __contains__(self, (dpid, key)):
+    def __contains__(self, xxx_todo_changeme):
         """(dpid, key) in <ConfSwitchSet instance>"""
+        (dpid, key) = xxx_todo_changeme
         return dpid in self.confs and key in self.confs[dpid]
 
     def find_dpid(self, key, value):
-        for dpid, conf in self.confs.items():
+        for dpid, conf in list(self.confs.items()):
             if key in conf:
                 if conf[key] == value:
                     return dpid

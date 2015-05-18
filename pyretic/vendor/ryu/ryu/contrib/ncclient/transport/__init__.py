@@ -14,9 +14,9 @@
 
 "Transport layer"
 
-from session import Session, SessionListener
-from ssh import SSHSession
-from errors import *
+from .session import Session, SessionListener
+from .ssh import SSHSession
+from .errors import *
 
 __all__ = [
     'Session',

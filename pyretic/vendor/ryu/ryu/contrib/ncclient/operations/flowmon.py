@@ -16,7 +16,7 @@
 
 from ncclient.xml_ import *
 
-from rpc import RPC
+from .rpc import RPC
 
 PC_URN = "urn:liberouter:params:xml:ns:netconf:power-control:1.0"
 

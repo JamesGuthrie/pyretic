@@ -138,7 +138,7 @@ class RunTest(tester.TestFlowBase):
         dp.send_msg(m)
 
     def get_port(self, dp):
-        for port_no, port in dp.ports.items():
+        for port_no, port in list(dp.ports.items()):
             if port_no != dp.ofproto.OFPP_LOCAL:
                 return port
         return None
@@ -309,7 +309,7 @@ class RunTest(tester.TestFlowBase):
         dp.send_msg(m)
 
     def verify_aggregate_stats_packet_count(self, dp, msg):
-        for name, val in self._verify.items():
+        for name, val in list(self._verify.items()):
             r_val = getattr(msg.body, name)
             if val != r_val:
                 return '%s is mismatched. verify=%s, reply=%s' \
@@ -473,7 +473,7 @@ class RunTest(tester.TestFlowBase):
                   3: [0x0000, 10, '\xff' * 6, a1]}
 
         self._verify = tables
-        for table_id, val in tables.items():
+        for table_id, val in list(tables.items()):
             match = dp.ofproto_parser.OFPMatch()
             match.set_dl_dst(val[2])
             self.mod_flow(dp, match=match, actions=[val[3]],
@@ -816,7 +816,7 @@ class RunTest(tester.TestFlowBase):
                 return 'bad duration time. set=%s(nsec), duration=%s(nsec)' \
                     % (timeout_nsec, duration_nsec)
 
-        for name, val in params.items():
+        for name, val in list(params.items()):
             r_val = getattr(msg, name)
             if val != r_val:
                 return '%s is mismatched. verify=%s, reply=%s' \
@@ -931,7 +931,7 @@ class RunTest(tester.TestFlowBase):
         dp.send_msg(m)
 
     def _verify_packet_in(self, dp, msg):
-        for name, val in self._verify.items():
+        for name, val in list(self._verify.items()):
             if name == 'in_port':
                 for f in msg.match.fields:
                     if f.header == ofproto_v1_2.OXM_OF_IN_PORT:

@@ -37,7 +37,7 @@ PY_VERSION = "python%s.%s" % (sys.version_info[0], sys.version_info[1])
 VENV_EXISTS = bool(os.path.exists(VENV))
 
 def die(message, *args):
-    print >> sys.stderr, message % args
+    print(message % args, file=sys.stderr)
     sys.exit(1)
 
 
@@ -69,29 +69,29 @@ def check_dependencies():
     if not HAS_VIRTUALENV:
         raise Exception('Virtualenv not found. ' + \
                          'Try installing python-virtualenv')
-    print 'done.'
+    print('done.')
 
 
 def create_virtualenv(venv=VENV, install_pip=False):
     """Creates the virtual environment and installs PIP only into the
     virtual environment
     """
-    print 'Creating venv...',
+    print('Creating venv...', end=' ')
 
     install = ['virtualenv', '-q', venv]
     run_command(install)
 
-    print 'done.'
-    print 'Installing pip in virtualenv...',
+    print('done.')
+    print('Installing pip in virtualenv...', end=' ')
     if install_pip and \
             not run_command(['tools/with_venv.sh', 'easy_install',
                              'pip>1.0']):
         die("Failed to install pip.")
-    print 'done.'
+    print('done.')
 
 
 def install_dependencies(venv=VENV):
-    print 'Installing dependencies with pip (this can take a while)...'
+    print('Installing dependencies with pip (this can take a while)...')
     run_command(['tools/with_venv.sh', 'pip', 'install', '-r',
                  PIP_REQUIRES], redirect_output=False)
     run_command(['tools/with_venv.sh', 'pip', 'install', '-r',
@@ -123,7 +123,7 @@ def print_help():
 
  Also, make test will automatically use the virtualenv.
     """
-    print help
+    print(help)
 
 
 def main(argv):

@@ -5,6 +5,7 @@ from pyretic.core import util
 import copy
 import sys
 import time
+from functools import reduce
 
 base_pkt = Packet({'raw': '\x00\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x01\x81\x00\x00\x02\x08\x00E\x00\x00T\x00\x00@\x00@\x01&\xa6\n\x00\x00\x01\n\x00\x00\x03\x08\x00\xe4@\x11\x9e\x00\x01\xf77\x18S\xfd\x91\n\x00\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./01234567', 'switch': 2, 'inport': 1})
 base_pkt = base_pkt.modifymany(get_packet_processor().unpack(base_pkt['raw']))
@@ -58,7 +59,7 @@ def __sp_atom__(ast, c_ast, trj, sp_fun, gt, append_fun):
 
 def __sp_combinator__(ast_list, trj, c_ast, gt_list, map_fun, reduce_fun):
     assert len(ast_list) > 1
-    results_list = map(lambda p: map_fun(p, trj, c_ast, gt_list), ast_list)
+    results_list = [map_fun(p, trj, c_ast, gt_list) for p in ast_list]
     return reduce(reduce_fun, results_list)
 
 def specialize(ast, trj, c_ast, gt_list):

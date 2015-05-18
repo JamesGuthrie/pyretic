@@ -405,7 +405,7 @@ class RouterController(ControllerBase):
         rest_message = []
         routers = self._get_router(switch_id)
         param = eval(rest_param) if rest_param else {}
-        for router in routers.values():
+        for router in list(routers.values()):
             function = getattr(router, func)
             data = function(vlan_id, param, self.waiters)
             rest_message.append(data)
@@ -475,7 +475,7 @@ class Router(dict):
         vlan_routers = []
 
         if vlan_id == REST_ALL:
-            vlan_routers = self.values()
+            vlan_routers = list(self.values())
         else:
             vlan_id = int(vlan_id)
             if (vlan_id != VLANID_NONE and
@@ -576,7 +576,7 @@ class Router(dict):
     def _cyclic_update_routing_tbl(self):
         while True:
             # send ARP to all gateways.
-            for vlan_router in self.values():
+            for vlan_router in list(self.values()):
                 vlan_router.send_arp_all_gw()
                 hub.sleep(1)
 
@@ -658,7 +658,7 @@ class VlanRouter(object):
 
     def _get_address_data(self):
         address_data = []
-        for value in self.address_data.values():
+        for value in list(self.address_data.values()):
             default_gw = ip_addr_ntoa(value.default_gw)
             address = '%s/%d' % (default_gw, value.netmask)
             data = {REST_ADDRESSID: value.address_id,
@@ -668,7 +668,7 @@ class VlanRouter(object):
 
     def _get_routing_data(self):
         routing_data = []
-        for key, value in self.routing_tbl.items():
+        for key, value in list(self.routing_tbl.items()):
             if value.gateway_mac is not None:
                 gateway = ip_addr_ntoa(value.gateway_ip)
                 data = {REST_ROUTEID: value.route_id,
@@ -1119,7 +1119,7 @@ class VlanRouter(object):
 
     def send_arp_request(self, src_ip, dst_ip, in_port=None):
         # Send ARP request from all ports.
-        for send_port in self.port_data.values():
+        for send_port in list(self.port_data.values()):
             if in_port is None or in_port != send_port.port_no:
                 src_mac = send_port.mac
                 dst_mac = mac_lib.BROADCAST_STR
@@ -1156,7 +1156,7 @@ class VlanRouter(object):
         src_ip = header_list[ARP].src_ip
 
         gateway_flg = False
-        for key, value in self.routing_tbl.items():
+        for key, value in list(self.routing_tbl.items()):
             if value.gateway_ip == src_ip:
                 gateway_flg = True
                 if value.gateway_mac == src_mac:
@@ -1228,7 +1228,7 @@ class VlanRouter(object):
 class PortData(dict):
     def __init__(self, ports):
         super(PortData, self).__init__()
-        for port in ports.values():
+        for port in list(ports.values()):
             data = Port(port.port_no, port.hw_addr)
             self[port.port_no] = data
 
@@ -1250,7 +1250,7 @@ class AddressData(dict):
         nw_addr, mask, default_gw = nw_addr_aton(address, err_msg=err_msg)
 
         # Check overlaps
-        for other in self.values():
+        for other in list(self.values()):
             other_mask = mask_ntob(other.netmask)
             add_mask = mask_ntob(mask, err_msg=err_msg)
             if (other.nw_addr == ipv4_apply_mask(default_gw, other.netmask) or
@@ -1272,16 +1272,16 @@ class AddressData(dict):
         return address
 
     def delete(self, address_id):
-        for key, value in self.items():
+        for key, value in list(self.items()):
             if value.address_id == address_id:
                 del self[key]
                 return
 
     def get_default_gw(self):
-        return [address.default_gw for address in self.values()]
+        return [address.default_gw for address in list(self.values())]
 
     def get_data(self, addr_id=None, ip=None):
-        for address in self.values():
+        for address in list(self.values()):
             if addr_id is not None:
                 if addr_id == address.address_id:
                     return address
@@ -1346,17 +1346,17 @@ class RoutingTable(dict):
         return routing_data
 
     def delete(self, route_id):
-        for key, value in self.items():
+        for key, value in list(self.items()):
             if value.route_id == route_id:
                 del self[key]
                 return
 
     def get_gateways(self):
-        return [routing_data.gateway_ip for routing_data in self.values()]
+        return [routing_data.gateway_ip for routing_data in list(self.values())]
 
     def get_data(self, gw_mac=None, dst_ip=None):
         if gw_mac is not None:
-            for route in self.values():
+            for route in list(self.values()):
                 if gw_mac == route.gateway_mac:
                     return route
             return None
@@ -1364,7 +1364,7 @@ class RoutingTable(dict):
         elif dst_ip is not None:
             get_route = None
             mask = 0
-            for route in self.values():
+            for route in list(self.values()):
                 if ipv4_apply_mask(dst_ip, route.netmask) == route.dst_ip:
                     # For longest match
                     if mask < route.netmask:
@@ -1824,7 +1824,7 @@ def ipv4_apply_mask(address, prefix_len, err_msg=None):
 
 
 def ipv4_int_to_text(ip_int):
-    assert isinstance(ip_int, (int, long))
+    assert isinstance(ip_int, int)
     return addrconv.ipv4.bin_to_text(struct.pack('!I', ip_int))
 
 

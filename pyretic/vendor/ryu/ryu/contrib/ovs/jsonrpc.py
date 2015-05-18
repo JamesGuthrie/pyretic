@@ -115,7 +115,7 @@ class Message(object):
 
         if "method" in json:
             method = json.pop("method")
-            if type(method) not in [str, unicode]:
+            if type(method) not in [str, str]:
                 return "method is not a JSON string"
         else:
             method = None
@@ -317,7 +317,7 @@ class Connection(object):
     def __process_msg(self):
         json = self.parser.finish()
         self.parser = None
-        if type(json) in [str, unicode]:
+        if type(json) in [str, str]:
             # XXX rate-limit
             vlog.warn("%s: error parsing stream: %s" % (self.name, json))
             self.error(errno.EPROTO)

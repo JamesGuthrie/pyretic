@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+
 from oslo.config import cfg
 import inspect
 import logging
@@ -22,7 +22,7 @@ import logging.config
 import logging.handlers
 import os
 import sys
-import ConfigParser
+import configparser
 
 
 CONF = cfg.CONF
@@ -72,7 +72,7 @@ def init_log():
         try:
             logging.config.fileConfig(CONF.log_config_file,
                                       disable_existing_loggers=True)
-        except ConfigParser.Error as e:
+        except configparser.Error as e:
             print('Failed to parse %s: %s' % (CONF.log_config_file, e),
                   file=sys.stderr)
             sys.exit(2)

@@ -110,7 +110,7 @@ class async_chat (asyncore.dispatcher):
 
         try:
             data = self.recv (self.ac_in_buffer_size)
-        except socket.error, why:
+        except socket.error as why:
             self.handle_error()
             return
 
@@ -128,7 +128,7 @@ class async_chat (asyncore.dispatcher):
                 # no terminator, collect it all
                 self.collect_incoming_data (self.ac_in_buffer)
                 self.ac_in_buffer = ''
-            elif isinstance(terminator, int) or isinstance(terminator, long):
+            elif isinstance(terminator, int) or isinstance(terminator, int):
                 # numeric terminator
                 n = terminator
                 if lb < n:
@@ -181,7 +181,7 @@ class async_chat (asyncore.dispatcher):
     def push (self, data):
         sabs = self.ac_out_buffer_size
         if len(data) > sabs:
-            for i in xrange(0, len(data), sabs):
+            for i in range(0, len(data), sabs):
                 self.producer_fifo.append(data[i:i+sabs])
         else:
             self.producer_fifo.append(data)
