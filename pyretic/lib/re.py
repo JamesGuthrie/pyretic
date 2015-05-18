@@ -200,8 +200,8 @@ class re_combinator(re_deriv):
         (structurally), otherwise False.
         """
         if self == other:
-            return reduce(lambda acc, (x,y): (acc and
-                          x.equals_meta_structural(y)),
+            return reduce(lambda acc, re: (acc and
+                          re[0].equals_meta_structural(re[1])),
                           list(zip(self.re_list, other.re_list)),
                           True)
         else:
@@ -212,7 +212,7 @@ class re_combinator(re_deriv):
         otherwise False.
         """
         if self == other:
-            return reduce(lambda acc, (x,y): acc and x.equals_meta_by_id(y),
+            return reduce(lambda acc, re: acc and re[0].equals_meta_by_id(re[1]),
                           list(zip(self.re_list, other.re_list)),
                           True)
         else:
