@@ -444,8 +444,8 @@ class Topology(nx.Graph):
         table_width = switch_str_maxlen + 5 + edge_str_maxlen + 5 + egress_str_maxlen + 3
         output_str += '\n'.rjust(table_width+1,'-')
         output_str += "%s  |  %s  |  %s  |\n" % \
-            ('switch','switch edges'.rjust(edge_str_maxlen/2+1).ljust(edge_str_maxlen),\
-                 'egress ports'.rjust(egress_str_maxlen/2+1).ljust(egress_str_maxlen),)        
+            ('switch','switch edges'.rjust(int(edge_str_maxlen/2+1)).ljust(edge_str_maxlen),\
+                 'egress ports'.rjust(int(egress_str_maxlen/2+1)).ljust(egress_str_maxlen),)        
         output_str += '\n'.rjust(table_width+1,'-')
         for switch in self.nodes():
             edge_str[switch] = edge_str[switch].ljust(edge_str_maxlen)
