@@ -254,6 +254,9 @@ class identity(Singleton):
     def __repr__(self):
         return "identity"
 
+    def __hash__(self):
+        return id(self)
+
 passthrough = identity   # Imperative alias
 true = identity          # Logic alias
 all_packets = identity   # Matching alias
