@@ -38,7 +38,7 @@ import inspect
 # 'len', 'property', 'set', 'type'
 # A bit more generic way is adopted
 import builtins
-_RESERVED_KEYWORD = dir(__builtin__)
+_RESERVED_KEYWORD = dir(builtins)
 
 
 _mapdict = lambda f, d: dict([(k, f(v)) for k, v in list(d.items())])
