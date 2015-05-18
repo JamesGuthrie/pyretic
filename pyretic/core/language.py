@@ -1176,7 +1176,7 @@ class parallel(CombinatorPolicy):
         if len(policies) == 0:
             return drop
         else:
-            rv = super(parallel, self).__new__(parallel, policies)
+            rv = super(parallel, self).__new__(self)
             rv.__init__(policies)
             return rv
 
@@ -1224,7 +1224,7 @@ class union(parallel,Filter):
         if len(policies) == 0:
             return drop
         else:
-            rv = super(parallel, self).__new__(union, policies)
+            rv = super(parallel, self).__new__(union)
             rv.__init__(policies)
             return rv
 
@@ -1255,7 +1255,7 @@ class sequential(CombinatorPolicy):
         if len(policies) == 0:
             return identity
         else:
-            rv = super(sequential, self).__new__(sequential, policies)
+            rv = super(sequential, self).__new__(sequential)
             rv.__init__(policies)
             return rv
 
@@ -1316,7 +1316,7 @@ class intersection(sequential,Filter):
         if len(policies) == 0:
             return identity
         else:
-            rv = super(sequential, self).__new__(intersection, policies)
+            rv = super(sequential, self).__new__(intersection)
             rv.__init__(policies)
             return rv
 
