@@ -32,8 +32,7 @@ from ryu.lib.ip import ipv4_to_bin, ipv4_to_str
 from ryu.lib.packet import packet, ethernet, lldp
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
-from ryu.netide.comm import *
-
+from pyretic.backend.comm import *
 
 def inport_value_hack(outport):
     if outport > 1:
@@ -111,8 +110,12 @@ class BackendChannel(asynchat.async_chat):
         with self.of_client.channel_lock:
             msg = deserialize(self.received_data)
 
+        # Set up time for starting rule installs.
+        if msg[0] == 'reset_install_time':
+            pass
+            # Ignore this for now - pyretic-specific thing
         # USE DESERIALIZED MSG
-        if msg[0] == 'inject_discovery_packet':
+        elif msg[0] == 'inject_discovery_packet':
             switch = msg[1]
             port = msg[2]
             self.of_client.inject_discovery_packet(switch,port)
@@ -188,7 +191,7 @@ class RYUClient(app_manager.RyuApp):
         }
         
         self.channel_lock = threading.Lock()
-        self.backend_channel = BackendChannel('127.0.0.1', RYU_BACKEND_PORT, self) 
+        self.backend_channel = BackendChannel('127.0.0.1', BACKEND_PORT, self)
         self.al = asyncore_loop()
         self.al.start()   
         
@@ -698,4 +701,4 @@ class RYUClient(app_manager.RyuApp):
         
         received = self.packet_from_network(switch=datapath.id, inport=msg.in_port, raw=msg.data)
         self.send_to_pyretic(['packet',received])
-    
+
