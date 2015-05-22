@@ -197,22 +197,28 @@ def main():
             if backend_path is None:
                 print 'Error: {} not found in PYTHONPATH'.format(backend_client)
                 sys.exit(1)
-            backend_exec = os.path.join(backend_path,'pox.py')
+            # Pox is still py2-only
+            if sys.version_info[0] == 2:
+                python = sys.executable
+            else:
+                python = which("python2")
+                if not python:
+                    print "Error: Could not find 'python2' in path."
+                    sys.exit(1)
+            backend_exec = [python, os.path.join(backend_path, 'pox.py'), backend_client]
         elif options.backend == 'ryu':
             backend_client = 'of_client.ryu_shim'
-            backend_exec = which('ryu-manager')
-            if not backend_exec:
+            ryu_exec = which('ryu-manager')
+            if not ryu_exec:
                 print "Error: Could not find 'ryu-manager' in path. Is ryu installed?"
+            backend_exec = [ryu_exec, backend_client]
         else:
             print "Error: Invalid backend '{}' specified".format(options.backend)
             sys.exit(1)
 
-        python=sys.executable
         # TODO(josh): pipe backend stdout to subprocess.PIPE or
         # other log file descriptor if necessary
-        of_client = subprocess.Popen([python,
-                                      backend_exec,
-                                      backend_client ],
+        of_client = subprocess.Popen(backend_exec,
                                      stdout=sys.stdout,
                                      stderr=subprocess.STDOUT)
 
