@@ -34,18 +34,20 @@ import socket
 import json
 
 BACKEND_PORT=41414
-TERM_CHAR='\n'
+TERM_CHAR=b'\n'
 
 def serialize(msg):
     jsonable_msg = to_jsonable_format(msg)
     jsoned_msg = json.dumps(jsonable_msg)
-    serialized_msg = jsoned_msg + TERM_CHAR
+    serialized_msg = jsoned_msg.encode('ascii') + TERM_CHAR
     return serialized_msg
 
 def deserialize(serialized_msgs):
     def json2python(item):
         if isinstance(item, str):
-            return item.encode('ascii')
+            return item
+        elif isinstance(item, bytes):
+            return item.decode('utf-8')
         elif isinstance(item, dict):
             return bytelist2ascii({ 
                     json2python(k) : json2python(v) 
@@ -56,17 +58,17 @@ def deserialize(serialized_msgs):
         else:
             return item
     serialized_msg = serialized_msgs.pop(0)
-    jsoned_msg = serialized_msg.rstrip(TERM_CHAR)
+    jsoned_msg = serialized_msg.rstrip(TERM_CHAR).decode('utf-8')
     msg = None
     while True:
         try:
-            msg = json.loads(jsoned_msg)  
+            msg = json.loads(jsoned_msg)
             msg = json2python(msg)
             break
         except:
             if len(serialized_msgs) == 0:
                 break
-            next_part = serialized_msgs.pop(0).rstrip(TERM_CHAR)
+            next_part = serialized_msgs.pop(0).rstrip(TERM_CHAR).decode('utf-8')
             jsoned_msg += next_part
     return msg
 
