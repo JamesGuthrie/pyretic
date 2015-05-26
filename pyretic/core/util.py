@@ -36,7 +36,7 @@ from functools import wraps
 from multiprocessing import Lock
 from logging import StreamHandler
 import sys
-from ipaddr import IPv4Network, AddressValueError, IPv4Address
+from ipaddress import IPv4Network, AddressValueError, IPv4Address
 
 
 def singleton(f):
@@ -187,6 +187,6 @@ def network_to_string(ip_net):
     """ Return a dotted quad IP address/subnet from an IPv4Network object. """
     assert isinstance(ip_net, IPv4Network)
     if ip_net.prefixlen < 32:
-        return str(ip_net.network) + '/' + str(ip_net.prefixlen)
+        return str(ip_net.network_address) + '/' + str(ip_net.prefixlen)
     else:
-        return str(ip_net.ip)
+        return str(ip_net.network_address)

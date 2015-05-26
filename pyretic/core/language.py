@@ -34,7 +34,10 @@ import functools
 import itertools
 import struct
 import time
-from ipaddr import IPv4Network
+try:
+    from ipaddress import IPv4Network
+except ImportError:
+    from ipaddr import IPv4Network
 from bitarray import bitarray
 import logging
 
