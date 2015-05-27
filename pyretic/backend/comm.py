@@ -85,8 +85,10 @@ def dict_to_ascii(d):
 
 def bytelist2ascii(packet_dict):
     def convert(h,val):
-        if h in ['srcmac','dstmac','srcip','dstip','raw']:
+        if h in ['srcmac','dstmac','srcip','dstip']:
             return ''.join([chr(d) for d in val])
+        elif h in ['raw']:
+            return bytes(val)
         else:
             return val
     return { h : convert(h,val) for (h, val) in list(packet_dict.items())}
@@ -96,6 +98,8 @@ def ascii2bytelist(packet_dict):
     def convert(h,val):
         if h in ['srcmac','dstmac','srcip','dstip','raw']:
             return [ord(c) for c in val]
+        elif h in ['raw']:
+            return [c for c in val]
         else:
             return val
     return { h : convert(h,val) for (h, val) in list(packet_dict.items())}
