@@ -620,6 +620,9 @@ class FwdBucket(Query):
         # be on names.
         return isinstance(other, FwdBucket) and id(self) == id(other)
 
+    def __hash__(self):
+        return id(self)
+
 
 class PathBucket(FwdBucket):
     """
