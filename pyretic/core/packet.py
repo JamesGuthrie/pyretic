@@ -112,7 +112,7 @@ class Processor(object):
         def extract_exclusive_headers(ryu_pkt, exclusive_groups):
                 headers = {}
                 for validator, fields in list(exclusive_groups.items()):
-                    if not iter(fields).next().is_valid(ryu_pkt):
+                    if not next(iter(fields)).is_valid(ryu_pkt):
                         continue
 
                     for field in fields:
@@ -125,7 +125,7 @@ class Processor(object):
         def pack_pyretic_headers(pyr_pkt, tmp_pkt, exclusive_groups):
                 headers = {}
                 for validator, fields in list(exclusive_groups.items()):
-                    if not iter(fields).next().is_valid(pyr_pkt):
+                    if not next(iter(fields)).is_valid(pyr_pkt):
                         continue
 
                     for field in fields:
