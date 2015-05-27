@@ -50,6 +50,9 @@ Protocol Header classes
 .. automodule:: ryu.lib.packet.icmpv6
    :members:
 
+.. automodule:: ryu.lib.packet.cfm
+   :members:
+
 .. automodule:: ryu.lib.packet.tcp
    :members:
 
@@ -95,6 +98,12 @@ Protocol Header classes
 
 .. autoclass:: ryu.lib.packet.igmp.igmp
    :members:
+.. autoclass:: ryu.lib.packet.igmp.igmpv3_query
+   :members:
+.. autoclass:: ryu.lib.packet.igmp.igmpv3_report
+   :members:
+.. autoclass:: ryu.lib.packet.igmp.igmpv3_report_group
+   :members:
 
 .. autoclass:: ryu.lib.packet.bgp.BGPMessage
    :members:
@@ -107,4 +116,17 @@ Protocol Header classes
 .. autoclass:: ryu.lib.packet.bgp.BGPNotification
    :members:
 .. automodule:: ryu.lib.packet.sctp
+   :members:
+
+.. autoclass:: ryu.lib.packet.bfd.bfd
+   :members:
+.. autoclass:: ryu.lib.packet.bfd.SimplePassword
+   :members:
+.. autoclass:: ryu.lib.packet.bfd.KeyedMD5
+   :members:
+.. autoclass:: ryu.lib.packet.bfd.MeticulousKeyedMD5
+   :members:
+.. autoclass:: ryu.lib.packet.bfd.KeyedSHA1
+   :members:
+.. autoclass:: ryu.lib.packet.bfd.MeticulousKeyedSHA1
    :members:

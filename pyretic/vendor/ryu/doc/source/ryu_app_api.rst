@@ -32,11 +32,8 @@ the Ryu application will be processed.
 There are kinds of events which are used to implement synchronous
 inter-application calls between Ryu applications.
 While such requests uses the same machinary as ordinary
-events, their replies are put on another queue dedicated to replies
+events, their replies are put on a queue dedicated to the transaction
 to avoid deadlock.
-(Because, unlike erlang, our queue doesn't support selective receive.)
-It's assumed that the number of in-flight synchronous requests from
-a Ryu application is at most 1.
 
 While threads and queues is currently implemented with eventlet/greenlet,
 a direct use of them in a Ryu application is strongly discouraged.
@@ -87,6 +84,8 @@ received from switches and send these events to Ryu applications which
 expressed an interest using ryu.controller.handler.set_ev_cls.
 OpenFlow event classes have at least the following attributes.
 
+.. tabularcolumns:: |l|L|
+
 ============ =============================================================
 Attribute    Description
 ============ =============================================================
@@ -102,99 +101,7 @@ See :ref:`ofproto_ref` for more info about OpenFlow messages.
 ryu.base.app_manager.RyuApp
 ===========================
 
-The base class for Ryu applications.
-
-class attributes
-----------------
-
-A RyuApp subclass can have class attributes with the following special
-names, which are recognized by app_manager.
-
-_CONTEXTS
-`````````
-
-A dictionary to specify contexts which this Ryu application wants to use.
-Its key is a name of context and its value is an ordinary class
-which implements the context.  The class is instantiated by app_manager
-and the instance is shared among RyuApp subclasses which has \_CONTEXTS
-member with the same key.  A RyuApp subclass can obtain a reference to
-the instance via its \_\_init\_\_'s kwargs as the following.
-
-.. code-block:: python
-
-    _CONTEXTS = {
-        'network': network.Network
-    }
-
-    def __init__(self, *args, *kwargs):
-        self.network = kwargs['network']
-
-_EVENTS
-```````
-
-A list of event classes which this RyuApp subclass would generate.
-This should be specified if and only if event classes are defined in
-a different python module from the RyuApp subclass is.
-
-OFP_VERSIONS
-````````````
-
-A list of supported OpenFlow versions for this RyuApp.
-For example:
-
-.. code-block:: python
-
-    OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
-                    ofproto_v1_2.OFP_VERSION]
-
-If multiple Ryu applications are loaded in the system,
-the intersection of their OFP_VERSIONS is used.
-
-instance attributes
--------------------
-
-A RyuApp instance provides the following attributes.
-
-\_\_init\_\_(self, \*args, \*kwargs)
-````````````````````````````````````
-
-RyuApp subclasses are instantiated after ryu-manager loaded
-all requested Ryu application modules.
-\_\_init\_\_ should call RyuApp.__init__ with the same arguments.
-It's illegal to send any events in \_\_init\_\_.
-
-name
-````
-
-The name of the class used for message routing among Ryu applications.
-(Cf. send_event)
-It's set to __class__.__name__ by RyuApp.__init__.
-It's discouraged to override this value.
-
-send_request(self, req)
-```````````````````````
-
-Make a synchronous request.
-Set req.sync to True, send it to a Ryu application specified by req.dst,
-and block until receiving a reply.
-Returns the received reply.
-The argument should be an instance of EventRequestBase.
-
-send_reply(self, rep)
-`````````````````````
-
-Send a reply for a synchronous request sent by send_request.
-The argument should be an instance of EventReplyBase.
-
-send_event(self, name, ev)
-``````````````````````````
-
-Send the specified event to the RyuApp instance specified by name.
-
-send_event_to_observers(self, ev)
-`````````````````````````````````
-
-Send the specified event to all observers of this RyuApp.
+See :ref:`api_ref`.
 
 ryu.controller.handler.set_ev_cls(ev_cls, dispatchers=None)
 ===========================================================
@@ -206,6 +113,8 @@ dispatchers argument specifies one of the following negotiation phases
 (or a list of them) for which events should be generated for this handler.
 Note that, in case an event changes the phase, the phase before the change
 is used to check the interest.
+
+.. tabularcolumns:: |l|L|
 
 =========================================== ==================================
 Negotiation phase                           Description
@@ -226,6 +135,8 @@ ryu.controller.controller.Datapath
 
 A class to describe an OpenFlow switch connected to this controller.
 An instance has the following attributes.
+
+.. tabularcolumns:: |l|L|
 
 ====================================== =======================================
 Attribute                              Description

@@ -171,7 +171,8 @@ class bpdu(packet_base.PacketBase):
 
     @staticmethod
     def register_bpdu_type(sub_cls):
-        bpdu._BPDU_TYPES[sub_cls.BPDU_TYPE] = sub_cls
+        bpdu._BPDU_TYPES.setdefault(sub_cls.VERSION_ID, {})
+        bpdu._BPDU_TYPES[sub_cls.VERSION_ID][sub_cls.BPDU_TYPE] = sub_cls
         return sub_cls
 
     def __init__(self):
@@ -180,9 +181,9 @@ class bpdu(packet_base.PacketBase):
         assert hasattr(self, 'VERSION_ID')
         assert hasattr(self, 'BPDU_TYPE')
 
-        self.protocol_id = PROTOCOL_IDENTIFIER
-        self.version_id = self.VERSION_ID
-        self.bpdu_type = self.BPDU_TYPE
+        self._protocol_id = PROTOCOL_IDENTIFIER
+        self._version_id = self.VERSION_ID
+        self._bpdu_type = self.BPDU_TYPE
 
         if hasattr(self, 'check_parameters'):
             self.check_parameters()
@@ -194,19 +195,18 @@ class bpdu(packet_base.PacketBase):
          bpdu_type) = struct.unpack_from(cls._PACK_STR, buf)
         assert protocol_id == PROTOCOL_IDENTIFIER
 
-        bpdu_cls = cls._BPDU_TYPES.get(bpdu_type, None)
-
-        if bpdu_cls:
-            assert version_id == bpdu_cls.VERSION_ID
+        if (version_id in cls._BPDU_TYPES
+                and bpdu_type in cls._BPDU_TYPES[version_id]):
+            bpdu_cls = cls._BPDU_TYPES[version_id][bpdu_type]
             assert len(buf[cls._PACK_LEN:]) >= bpdu_cls.PACK_LEN
             return bpdu_cls.parser(buf[cls._PACK_LEN:])
         else:
-            # Unknown bdpu type.
+            # Unknown bpdu version/type.
             return buf, None, None
 
     def serialize(self, payload, prev):
-        return struct.pack(bpdu._PACK_STR, self.protocol_id,
-                           self.version_id, self.bpdu_type)
+        return struct.pack(bpdu._PACK_STR, self._protocol_id,
+                           self._version_id, self._bpdu_type)
 
 
 @bpdu.register_bpdu_type
@@ -247,10 +247,15 @@ class ConfigurationBPDUs(bpdu):
     BPDU_TYPE = TYPE_CONFIG_BPDU
     _PACK_STR = '!BQIQHHHHH'
     PACK_LEN = struct.calcsize(_PACK_STR)
+    _TYPE = {
+        'ascii': [
+            'root_mac_address', "bridge_mac_address"
+        ]
+    }
 
     _BRIDGE_PRIORITY_STEP = 4096
     _PORT_PRIORITY_STEP = 16
-    _TIMER_STEP = float(1)/256
+    _TIMER_STEP = float(1) / 256
 
     def __init__(self, flags=0, root_priority=DEFAULT_BRIDGE_PRIORITY,
                  root_system_id_extension=0,
@@ -450,7 +455,7 @@ class RstBPDUs(ConfigurationBPDUs):
                  message_age=0, max_age=DEFAULT_MAX_AGE,
                  hello_time=DEFAULT_HELLO_TIME,
                  forward_delay=DEFAULT_FORWARD_DELAY):
-        self.version_1_length = VERSION_1_LENGTH
+        self._version_1_length = VERSION_1_LENGTH
 
         super(RstBPDUs, self).__init__(flags, root_priority,
                                        root_system_id_extension,
@@ -482,5 +487,5 @@ class RstBPDUs(ConfigurationBPDUs):
 
     def serialize(self, payload, prev):
         base = super(RstBPDUs, self).serialize(payload, prev)
-        sub = struct.pack(RstBPDUs._PACK_STR, self.version_1_length)
+        sub = struct.pack(RstBPDUs._PACK_STR, self._version_1_length)
         return base + sub

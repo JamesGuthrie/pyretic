@@ -41,7 +41,6 @@ class Packet(object):
             self.protocols = []
         else:
             self.protocols = protocols
-        self.protocol_idx = 0
         if self.data:
             self._parser(parse_cls)
 
@@ -106,22 +105,15 @@ class Packet(object):
             return result[0]
         return None
 
-    def next(self):
-        try:
-            p = self.protocols[self.protocol_idx]
-        except:
-            self.protocol_idx = 0
-            raise StopIteration
-
-        self.protocol_idx += 1
-        return p
-
     def __div__(self, trailer):
         self.add_protocol(trailer)
         return self
 
+    def __truediv__(self, trailer):
+        return self.__div__(trailer)
+
     def __iter__(self):
-        return self
+        return iter(self.protocols)
 
     def __getitem__(self, idx):
         return self.protocols[idx]
@@ -154,3 +146,4 @@ def _PacketBase__div__(self, trailer):
     return pkt
 
 packet_base.PacketBase.__div__ = _PacketBase__div__
+packet_base.PacketBase.__truediv__ = _PacketBase__div__

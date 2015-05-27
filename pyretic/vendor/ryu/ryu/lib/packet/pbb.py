@@ -15,7 +15,6 @@
 
 import struct
 from ryu.lib.packet import packet_base
-from ryu.ofproto import ether
 
 
 class itag(packet_base.PacketBase):
@@ -52,6 +51,7 @@ class itag(packet_base.PacketBase):
         dei = data >> 28 & 1
         uca = data >> 27 & 1
         sid = data & 0x00ffffff
+        # circular import: ethernet -> vlan -> pbb
         from ryu.lib.packet import ethernet
         return (cls(pcp, dei, uca, sid), ethernet.ethernet,
                 buf[cls._MIN_LEN:])

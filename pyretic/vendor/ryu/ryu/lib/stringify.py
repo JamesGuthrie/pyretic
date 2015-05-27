@@ -37,7 +37,13 @@ import inspect
 # grep __init__ *.py | grep '[^_]_\>' showed that
 # 'len', 'property', 'set', 'type'
 # A bit more generic way is adopted
-import __builtin__
+try:
+    # Python 2
+    import __builtin__
+except ImportError:
+    # Python 3
+    import builtins as __builtin__
+
 _RESERVED_KEYWORD = dir(__builtin__)
 
 
@@ -70,9 +76,28 @@ class Utf8StringType(TypeDescr):
         return v.encode('utf-8')
 
 
+class NXFlowSpecFieldType(TypeDescr):
+    # ("field_name", 0) <-> ["field_name", 0]
+
+    @staticmethod
+    def encode(v):
+        if not isinstance(v, tuple):
+            return v
+        field, ofs = v
+        return [AsciiStringType.encode(field), ofs]
+
+    @staticmethod
+    def decode(v):
+        if not isinstance(v, list):
+            return v
+        field, ofs = v
+        return (AsciiStringType.decode(field), ofs)
+
+
 _types = {
     'ascii': AsciiStringType,
     'utf-8': Utf8StringType,
+    'nx-flow-spec-field': NXFlowSpecFieldType,  # XXX this should not be here
 }
 
 
@@ -105,6 +130,7 @@ class StringifyMixin(object):
     """
 
     _class_prefixes = []
+    _class_suffixes = []
 
     def stringify_attrs(self):
         """an override point for sub classes"""
@@ -132,6 +158,9 @@ class StringifyMixin(object):
             return False
         for p in cls._class_prefixes:
             if k.startswith(p):
+                return True
+        for p in cls._class_suffixes:
+            if k.endswith(p):
                 return True
         return False
 
@@ -192,6 +221,8 @@ class StringifyMixin(object):
 
         This method takes the following arguments.
 
+        .. tabularcolumns:: |l|L|
+
         =============  =====================================================
         Argument       Description
         =============  =====================================================
@@ -216,11 +247,11 @@ class StringifyMixin(object):
         return getattr(mod, k)
 
     @classmethod
-    def obj_from_jsondict(cls, jsondict):
+    def obj_from_jsondict(cls, jsondict, **additional_args):
         assert len(jsondict) == 1
         for k, v in jsondict.iteritems():
             obj_cls = cls.cls_from_jsondict_key(k)
-            return obj_cls.from_jsondict(v)
+            return obj_cls.from_jsondict(v, **additional_args)
 
     @classmethod
     def _get_decoder(cls, k, decode_string):
@@ -230,19 +261,20 @@ class StringifyMixin(object):
         return cls._get_default_decoder(decode_string)
 
     @classmethod
-    def _decode_value(cls, k, json_value, decode_string=base64.b64decode):
+    def _decode_value(cls, k, json_value, decode_string=base64.b64decode,
+                      **additional_args):
         return cls._get_decoder(k, decode_string)(json_value)
 
     @classmethod
     def _get_default_decoder(cls, decode_string):
-        def _decode(json_value):
+        def _decode(json_value, **additional_args):
             if isinstance(json_value, (bytes, unicode)):
                 v = decode_string(json_value)
             elif isinstance(json_value, list):
                 v = map(_decode, json_value)
             elif isinstance(json_value, dict):
                 if cls._is_class(json_value):
-                    v = cls.obj_from_jsondict(json_value)
+                    v = cls.obj_from_jsondict(json_value, **additional_args)
                 else:
                     v = _mapdict(_decode, json_value)
                     # XXXhack
@@ -274,6 +306,8 @@ class StringifyMixin(object):
 
         This method takes the following arguments.
 
+        .. tabularcolumns:: |l|L|
+
         =============== =====================================================
         Argument        Descrpition
         =============== =====================================================
@@ -287,16 +321,22 @@ class StringifyMixin(object):
         additional_args (Optional) Additional kwargs for constructor.
         =============== =====================================================
         """
-        decode = lambda k, x: cls._decode_value(k, x, decode_string)
+        decode = lambda k, x: cls._decode_value(k, x, decode_string,
+                                                **additional_args)
         kwargs = cls._restore_args(_mapdict_kv(decode, dict_))
         try:
             return cls(**dict(kwargs, **additional_args))
         except TypeError:
-            #debug
-            print "CLS", cls
-            print "ARG", dict_
-            print "KWARG", kwargs
+            # debug
+            print("CLS %s" % cls)
+            print("ARG %s" % dict_)
+            print("KWARG %s" % kwargs)
             raise
+
+    @classmethod
+    def set_classes(cls, registered_dict):
+        cls._class_prefixes.extend([v.__name__ for v in
+                                    registered_dict.values()])
 
 
 def obj_python_attrs(msg_):

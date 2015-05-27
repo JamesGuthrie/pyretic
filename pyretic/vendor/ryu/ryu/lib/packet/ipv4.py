@@ -22,7 +22,8 @@ from . import igmp
 from . import udp
 from . import tcp
 from . import sctp
-from ryu.ofproto import inet
+from . import ospf
+from . import in_proto as inet
 from ryu.lib import addrconv
 
 
@@ -69,12 +70,17 @@ class ipv4(packet_base.PacketBase):
 
     _PACK_STR = '!BBHHHBBH4s4s'
     _MIN_LEN = struct.calcsize(_PACK_STR)
+    _TYPE = {
+        'ascii': [
+            'src', 'dst'
+        ]
+    }
 
     def __init__(self, version=4, header_length=5, tos=0,
                  total_length=0, identification=0, flags=0,
                  offset=0, ttl=255, proto=0, csum=0,
-                 src='0.0.0.0',
-                 dst='0.0.0.0',
+                 src='10.0.0.1',
+                 dst='10.0.0.2',
                  option=None):
         super(ipv4, self).__init__()
         self.version = version
@@ -140,3 +146,4 @@ ipv4.register_packet_type(igmp.igmp, inet.IPPROTO_IGMP)
 ipv4.register_packet_type(tcp.tcp, inet.IPPROTO_TCP)
 ipv4.register_packet_type(udp.udp, inet.IPPROTO_UDP)
 ipv4.register_packet_type(sctp.sctp, inet.IPPROTO_SCTP)
+ipv4.register_packet_type(ospf.ospf, inet.IPPROTO_OSPF)

@@ -17,7 +17,7 @@
 # limitations under the License.
 
 from ryu.lib import hub
-hub.patch()
+hub.patch(thread=False)
 
 # TODO:
 #   Right now, we have our own patched copy of ovs python bindings
@@ -25,10 +25,10 @@ hub.patch()
 #   use it
 #
 # NOTE: this modifies sys.path and thus affects the following imports.
-# eg. oslo.config.cfg.
 import ryu.contrib
+ryu.contrib.update_module_path()
 
-from oslo.config import cfg
+from ryu import cfg
 import logging
 import sys
 
@@ -48,33 +48,47 @@ CONF.register_cli_opts([
     cfg.ListOpt('app-lists', default=[],
                 help='application module name to run'),
     cfg.MultiStrOpt('app', positional=True, default=[],
-                    help='application module name to run')
+                    help='application module name to run'),
+    cfg.StrOpt('pid-file', default=None, help='pid file name'),
+    cfg.BoolOpt('enable-debugger', default=False,
+                help='don\'t overwrite Python standard threading library'
+                '(use only for debugging)'),
 ])
 
 
-def main():
+def main(args=None, prog=None):
     try:
-        CONF(project='ryu', version='ryu-manager %s' % version,
+        CONF(args=args, prog=prog,
+             project='ryu', version='ryu-manager %s' % version,
              default_config_files=['/usr/local/etc/ryu/ryu.conf'])
     except cfg.ConfigFilesNotFoundError:
-        CONF(project='ryu', version='ryu-manager %s' % version)
+        CONF(args=args, prog=prog,
+             project='ryu', version='ryu-manager %s' % version)
 
     log.init_log()
 
-    app_lists = CONF.app_lists + CONF.app
+    if CONF.enable_debugger:
+        LOG = logging.getLogger('ryu.cmd.manager')
+        msg = 'debugging is available (--enable-debugger option is turned on)'
+        LOG.info(msg)
+    else:
+        hub.patch(thread=True)
 
-    app_mgr = AppManager()
+    if CONF.pid_file:
+        import os
+        with open(CONF.pid_file, 'w') as pid_file:
+            pid_file.write(str(os.getpid()))
+
+    app_lists = CONF.app_lists + CONF.app
+    # keep old behaivor, run ofp if no application is specified.
+    if not app_lists:
+        app_lists = ['ryu.controller.ofp_handler']
+
+    app_mgr = AppManager.get_instance()
     app_mgr.load_apps(app_lists)
     contexts = app_mgr.create_contexts()
-    app_mgr.instantiate_apps(**contexts)
-
     services = []
-
-    # TODO: do the following in app_manager's instantiate_apps()
-    ofpapp = controller.start_service(app_mgr)
-    if ofpapp:
-        thr = hub.spawn(ofpapp)
-        services.append(thr)
+    services.extend(app_mgr.instantiate_apps(**contexts))
 
     webapp = wsgi.start_service(app_mgr)
     if webapp:

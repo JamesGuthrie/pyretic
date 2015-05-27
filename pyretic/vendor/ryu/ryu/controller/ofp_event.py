@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+OpenFlow event definitions.
+"""
+
 import inspect
 
 from ryu.controller import handler
@@ -40,8 +44,12 @@ def _ofp_msg_name_to_ev_name(msg_name):
 
 
 def ofp_msg_to_ev(msg):
-    name = _ofp_msg_name_to_ev_name(msg.__class__.__name__)
-    return _OFP_MSG_EVENTS[name](msg)
+    return ofp_msg_to_ev_cls(msg.__class__)(msg)
+
+
+def ofp_msg_to_ev_cls(msg_cls):
+    name = _ofp_msg_name_to_ev_name(msg_cls.__name__)
+    return _OFP_MSG_EVENTS[name]
 
 
 def _create_ofp_msg_ev_class(msg_cls):
@@ -58,7 +66,7 @@ def _create_ofp_msg_ev_class(msg_cls):
     _OFP_MSG_EVENTS[name] = cls
 
 
-def _create_ofp_msg_ev_from_module(ofp_praser):
+def _create_ofp_msg_ev_from_module(ofp_parser):
     # print mod
     for _k, cls in inspect.getmembers(ofp_parser, inspect.isclass):
         if not hasattr(cls, 'cls_msg_type'):

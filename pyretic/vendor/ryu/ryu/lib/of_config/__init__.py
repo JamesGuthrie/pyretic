@@ -14,9 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+OF-Config implementation.
+"""
+
 import glob
 import os.path
 import sys
+
+# we require ncclient
+import ryu.contrib
+ryu.contrib.update_module_path()
 
 SCHEMA_DIR = os.path.dirname(__file__)
 

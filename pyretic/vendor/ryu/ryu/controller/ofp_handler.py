@@ -14,13 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Basic OpenFlow handling including negotiation.
+"""
+
 import itertools
 import logging
+import warnings
 
 import ryu.base.app_manager
 
+from ryu.lib import hub
 from ryu import utils
 from ryu.controller import ofp_event
+from ryu.controller.controller import OpenFlowController
 from ryu.controller.handler import set_ev_handler
 from ryu.controller.handler import HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER,\
     MAIN_DISPATCHER
@@ -44,6 +51,10 @@ class OFPHandler(ryu.base.app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(OFPHandler, self).__init__(*args, **kwargs)
         self.name = 'ofp_event'
+
+    def start(self):
+        super(OFPHandler, self).start()
+        return hub.spawn(OpenFlowController())
 
     def _hello_failed(self, datapath, error_desc):
         self.logger.error(error_desc)
@@ -214,8 +225,10 @@ class OFPHandler(ryu.base.app_manager.RyuApp):
     def multipart_reply_handler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
-        for port in msg.body:
-            datapath.ports[port.port_no] = port
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            for port in msg.body:
+                datapath.ports[port.port_no] = port
 
         if msg.flags & datapath.ofproto.OFPMPF_REPLY_MORE:
             return

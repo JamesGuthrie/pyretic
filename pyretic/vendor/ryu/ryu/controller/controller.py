@@ -14,25 +14,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+The main component of OpenFlow controller.
+
+- Handle connections from switches
+- Generate and route events to appropriate entities like Ryu applications
+
+"""
+
 import contextlib
-from oslo.config import cfg
+from ryu import cfg
 import logging
 from ryu.lib import hub
 from ryu.lib.hub import StreamServer
 import traceback
 import random
 import ssl
+from socket import IPPROTO_TCP, TCP_NODELAY
+import warnings
 
 import ryu.base.app_manager
 
 from ryu.ofproto import ofproto_common
 from ryu.ofproto import ofproto_parser
+from ryu.ofproto import ofproto_protocol
 from ryu.ofproto import ofproto_v1_0
-from ryu.ofproto import ofproto_v1_0_parser
-from ryu.ofproto import ofproto_v1_2
-from ryu.ofproto import ofproto_v1_2_parser
-from ryu.ofproto import ofproto_v1_3
-from ryu.ofproto import ofproto_v1_3_parser
 from ryu.ofproto import nx_match
 
 from ryu.controller import handler
@@ -61,7 +67,7 @@ class OpenFlowController(object):
 
     # entry point
     def __call__(self):
-        #LOG.debug('call')
+        # LOG.debug('call')
         self.server_loop()
 
     def server_loop(self):
@@ -87,7 +93,7 @@ class OpenFlowController(object):
                                    CONF.ofp_tcp_listen_port),
                                   datapath_connection_factory)
 
-        #LOG.debug('loop')
+        # LOG.debug('loop')
         server.serve_forever()
 
 
@@ -100,20 +106,12 @@ def _deactivate(method):
     return deactivate
 
 
-class Datapath(object):
-    supported_ofp_version = {
-        ofproto_v1_0.OFP_VERSION: (ofproto_v1_0,
-                                   ofproto_v1_0_parser),
-        ofproto_v1_2.OFP_VERSION: (ofproto_v1_2,
-                                   ofproto_v1_2_parser),
-        ofproto_v1_3.OFP_VERSION: (ofproto_v1_3,
-                                   ofproto_v1_3_parser),
-    }
-
+class Datapath(ofproto_protocol.ProtocolDesc):
     def __init__(self, socket, address):
         super(Datapath, self).__init__()
 
         self.socket = socket
+        self.socket.setsockopt(IPPROTO_TCP, TCP_NODELAY, 1)
         self.address = address
         self.is_active = True
 
@@ -121,13 +119,31 @@ class Datapath(object):
         # prevent it from eating memory up
         self.send_q = hub.Queue(16)
 
-        self.set_version(max(self.supported_ofp_version))
         self.xid = random.randint(0, self.ofproto.MAX_XID)
         self.id = None  # datapath_id is unknown yet
-        self.ports = None
+        self._ports = None
         self.flow_format = ofproto_v1_0.NXFF_OPENFLOW10
         self.ofp_brick = ryu.base.app_manager.lookup_service_brick('ofp_event')
         self.set_state(handler.HANDSHAKE_DISPATCHER)
+
+    def _get_ports(self):
+        if (self.ofproto_parser is not None and
+                self.ofproto_parser.ofproto.OFP_VERSION >= 0x04):
+            message = (
+                'Datapath#ports is kept for compatibility with the previous '
+                'openflow versions (< 1.3). '
+                'This not be updated by EventOFPPortStatus message. '
+                'If you want to be updated, you can use '
+                '\'ryu.controller.dpset\' or \'ryu.topology.switches\'.'
+            )
+            warnings.warn(message, stacklevel=2)
+        return self._ports
+
+    def _set_ports(self, ports):
+        self._ports = ports
+
+    # To show warning when Datapath#ports is read
+    ports = property(_get_ports, _set_ports)
 
     def close(self):
         self.set_state(handler.DEAD_DISPATCHER)
@@ -137,10 +153,6 @@ class Datapath(object):
         ev = ofp_event.EventOFPStateChange(self)
         ev.state = state
         self.ofp_brick.send_event_to_observers(ev, state)
-
-    def set_version(self, version):
-        assert version in self.supported_ofp_version
-        self.ofproto, self.ofproto_parser = self.supported_ofp_version[version]
 
     # Low level socket handling layer
     @_deactivate
@@ -163,15 +175,17 @@ class Datapath(object):
 
                 msg = ofproto_parser.msg(self,
                                          version, msg_type, msg_len, xid, buf)
-                #LOG.debug('queue msg %s cls %s', msg, msg.__class__)
-                ev = ofp_event.ofp_msg_to_ev(msg)
-                self.ofp_brick.send_event_to_observers(ev, self.state)
+                # LOG.debug('queue msg %s cls %s', msg, msg.__class__)
+                if msg:
+                    ev = ofp_event.ofp_msg_to_ev(msg)
+                    self.ofp_brick.send_event_to_observers(ev, self.state)
 
-                handlers = [handler for handler in
-                            self.ofp_brick.get_handlers(ev) if self.state in
-                            handler.dispatchers]
-                for handler in handlers:
-                    handler(ev)
+                    dispatchers = lambda x: x.callers[ev.__class__].dispatchers
+                    handlers = [handler for handler in
+                                self.ofp_brick.get_handlers(ev) if
+                                self.state in dispatchers(handler)]
+                    for handler in handlers:
+                        handler(ev)
 
                 buf = buf[required_len:]
                 required_len = ofproto_common.OFP_HEADER_SIZE
@@ -321,9 +335,3 @@ def datapath_connection_factory(socket, address):
                 dpid_str = dpid_to_str(datapath.id)
             LOG.error("Error in the datapath %s from %s", dpid_str, address)
             raise
-
-
-def start_service(app_mgr):
-    for app in app_mgr.applications:
-        if app.endswith('ofp_handler'):
-            return OpenFlowController()

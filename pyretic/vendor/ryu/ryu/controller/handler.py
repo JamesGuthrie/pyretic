@@ -1,4 +1,4 @@
-# Copyright (C) 2011, 2012 Nippon Telegraph and Telephone Corporation.
+# Copyright (C) 2011-2014 Nippon Telegraph and Telephone Corporation.
 # Copyright (C) 2011, 2012 Isaku Yamahata <yamahata at valinux co jp>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,26 +27,47 @@ MAIN_DISPATCHER = "main"
 DEAD_DISPATCHER = "dead"
 
 
+class _Caller(object):
+    """Describe how to handle an event class.
+    """
+
+    def __init__(self, dispatchers, ev_source):
+        """Initialize _Caller.
+
+        :param dispatchers: A list of states or a state, in which this
+                            is in effect.
+                            None and [] mean all states.
+        :param ev_source: The module which generates the event.
+                          ev_cls.__module__ for set_ev_cls.
+                          None for set_ev_handler.
+        """
+        self.dispatchers = dispatchers
+        self.ev_source = ev_source
+
+
 # should be named something like 'observe_event'
 def set_ev_cls(ev_cls, dispatchers=None):
     def _set_ev_cls_dec(handler):
-        handler.ev_cls = ev_cls
-        handler.dispatchers = _listify(dispatchers)
-        handler.observer = ev_cls.__module__
+        if 'callers' not in dir(handler):
+            handler.callers = {}
+        for e in _listify(ev_cls):
+            handler.callers[e] = _Caller(_listify(dispatchers), e.__module__)
         return handler
     return _set_ev_cls_dec
 
 
 def set_ev_handler(ev_cls, dispatchers=None):
     def _set_ev_cls_dec(handler):
-        handler.ev_cls = ev_cls
-        handler.dispatchers = _listify(dispatchers)
+        if 'callers' not in dir(handler):
+            handler.callers = {}
+        for e in _listify(ev_cls):
+            handler.callers[e] = _Caller(_listify(dispatchers), None)
         return handler
     return _set_ev_cls_dec
 
 
-def _is_ev_cls(meth):
-    return hasattr(meth, 'ev_cls')
+def _has_caller(meth):
+    return hasattr(meth, 'callers')
 
 
 def _listify(may_list):
@@ -60,26 +81,42 @@ def _listify(may_list):
 def register_instance(i):
     for _k, m in inspect.getmembers(i, inspect.ismethod):
         # LOG.debug('instance %s k %s m %s', i, _k, m)
-        if _is_ev_cls(m):
-            i.register_handler(m.ev_cls, m)
+        if _has_caller(m):
+            for ev_cls, c in m.callers.iteritems():
+                i.register_handler(ev_cls, m)
 
 
 def get_dependent_services(cls):
     services = []
     for _k, m in inspect.getmembers(cls, inspect.ismethod):
-        if _is_ev_cls(m):
-            service = getattr(sys.modules[m.ev_cls.__module__],
-                              '_SERVICE_NAME', None)
-            if service:
-                # avoid cls that registers the own events (like ofp_handler)
-                if cls.__module__ != service:
-                    services.append(service)
+        if _has_caller(m):
+            for ev_cls, c in m.callers.iteritems():
+                service = getattr(sys.modules[ev_cls.__module__],
+                                  '_SERVICE_NAME', None)
+                if service:
+                    # avoid cls that registers the own events (like
+                    # ofp_handler)
+                    if cls.__module__ != service:
+                        services.append(service)
 
+    m = sys.modules[cls.__module__]
+    services.extend(getattr(m, '_REQUIRED_APP', []))
     services = list(set(services))
     return services
 
 
 def register_service(service):
+    """
+    Register the ryu application specified by 'service' as
+    a provider of events defined in the calling module.
+
+    If an application being loaded consumes events (in the sense of
+    set_ev_cls) provided by the 'service' application, the latter
+    application will be automatically loaded.
+
+    This mechanism is used to e.g. automatically start ofp_handler if
+    there are applications consuming OFP events.
+    """
     frm = inspect.stack()[1]
     m = inspect.getmodule(frm[0])
     m._SERVICE_NAME = service

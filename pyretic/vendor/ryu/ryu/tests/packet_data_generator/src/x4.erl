@@ -202,6 +202,21 @@ x() ->
              class = openflow_basic,name = ipv6_exthdr,
              has_mask = false,
              value = <<500:9>>,
+             mask = undefined},
+         #ofp_field{
+             class = {experimenter, onf},name = pbb_uca,
+             has_mask = false,
+             value = <<1:1>>,
+             mask = undefined},
+         #ofp_field{
+             class = nxm_1,name = 31,  % tun_ipv4_src
+             has_mask = false,
+             value = <<1,2,3,4>>,
+             mask = undefined},
+         #ofp_field{
+             class = nxm_1,name = 32,  % tun_ipv4_dst
+             has_mask = false,
+             value = <<1,2,3,4>>,
              mask = undefined}
     ],
     List = [
@@ -260,7 +275,11 @@ x() ->
                      actions =
                          [#ofp_action_set_field{
                              field = #ofp_field{name = eth_src,
-                                                value = <<1,2,3,4,5,6>> }}]}]},
+                                                value = <<1,2,3,4,5,6>> }},
+                          #ofp_action_set_field{
+                             field = #ofp_field{class = {experimenter, onf},
+                                                name = pbb_uca,
+                                                value = <<1:1>> }}]}]},
         #ofp_flow_mod{
             cookie = <<0,0,0,0,0,0,0,0>>,
             cookie_mask = <<0,0,0,0,0,0,0,0>>,
@@ -410,6 +429,39 @@ x() ->
                      match = #ofp_match{fields = []},
                      instructions =
                          [#ofp_instruction_write_actions{
+                              actions =
+                                  [#ofp_action_set_field{
+                                      field = #ofp_field{name = vlan_vid,
+                                                         value = <<258:13>> }},
+                                   #ofp_action_copy_ttl_out{},
+                                   #ofp_action_copy_ttl_in{},
+                                   #ofp_action_copy_ttl_in{},
+                                   #ofp_action_pop_pbb{},
+                                   #ofp_action_push_pbb{ethertype = 16#1234},
+                                   #ofp_action_pop_mpls{ethertype= 16#9876},
+                                   #ofp_action_push_mpls{ethertype = 16#8847},
+                                   #ofp_action_pop_vlan{},
+                                   #ofp_action_push_vlan{ethertype = 16#8100},
+                                   #ofp_action_dec_mpls_ttl{},
+                                   #ofp_action_set_mpls_ttl{mpls_ttl = 10},
+                                   #ofp_action_dec_nw_ttl{},
+                                   #ofp_action_set_nw_ttl{nw_ttl = 10},
+                                   #ofp_action_set_queue{queue_id = 3},
+                                   #ofp_action_group{group_id = 99},
+                                   #ofp_action_output{port = 6,
+                                                      max_len = no_buffer}]},
+                          #ofp_instruction_apply_actions{
+                              actions =
+                                  [#ofp_action_set_field{
+                                      field = #ofp_field{name = eth_src,
+                                                         value = <<1,2,3,4,
+                                                                   5,6>> }},
+                                   #ofp_action_set_field{
+                                      field = #ofp_field{class = {experimenter,
+                                                                  onf},
+                                                         name = pbb_uca,
+                                                         value = <<1:1>> }}]},
+                          #ofp_instruction_write_actions{
                               actions =
                                   [#ofp_action_output{
                                        port = controller,
@@ -758,7 +810,19 @@ x() ->
                                   arp_tha,ipv6_src,ipv6_dst,ipv6_flabel,
                                   icmpv6_type,icmpv6_code,ipv6_nd_target,
                                   ipv6_nd_sll,ipv6_nd_tll,mpls_label,mpls_tc,
-                                  mpls_bos,pbb_isid]}]},
+                                  mpls_bos,pbb_isid]},
+                         #ofp_table_feature_prop_experimenter{
+                             experimenter = 101,
+                             exp_type = 0,
+                             data = <<>>},
+                         #ofp_table_feature_prop_experimenter{
+                             experimenter = 101,
+                             exp_type = 1,
+                             data = <<1:32>>},
+                         #ofp_table_feature_prop_experimenter{
+                             experimenter = 101,
+                             exp_type = 2,
+                             data = <<1:32,2:32>>}]},
                 #ofp_table_features{
                     table_id = 1,name = <<"Flow Table 0x01">>,
                     metadata_match = <<"\377\377\377\377\377\377\377\377">>,
@@ -1678,7 +1742,19 @@ x() ->
                                    arp_tha,ipv6_src,ipv6_dst,ipv6_flabel,
                                    icmpv6_type,icmpv6_code,ipv6_nd_target,
                                    ipv6_nd_sll,ipv6_nd_tll,mpls_label,mpls_tc,
-                                   mpls_bos,pbb_isid]}]},
+                                   mpls_bos,pbb_isid]},
+                         #ofp_table_feature_prop_experimenter{
+                             experimenter = 101,
+                             exp_type = 0,
+                             data = <<>>},
+                         #ofp_table_feature_prop_experimenter{
+                             experimenter = 101,
+                             exp_type = 1,
+                             data = <<1:32>>},
+                         #ofp_table_feature_prop_experimenter{
+                             experimenter = 101,
+                             exp_type = 2,
+                             data = <<1:32,2:32>>}]},
                  #ofp_table_features{
                      table_id = 1,name = <<"Flow Table 0x01">>,
                      metadata_match = <<"\377\377\377\377\377\377\377\377">>,
@@ -2537,6 +2613,25 @@ x() ->
             experimenter = 16#deadbeaf,
             exp_type = 16#cafe7777,
             data = <<"testdata99999999">>
+        },
+        #onf_flow_monitor_request{
+            flags = [],
+            body = [
+                #onf_flow_monitor{
+                    id = 100000000,
+                    flags = [initial, add, delete, modify],
+                    out_port = 22,
+                    table_id = 33,
+                    fields = []
+                },
+                #onf_flow_monitor{
+                    id = 999,
+                    flags = [initial, actions, own],
+                    out_port = any,
+                    table_id = all,
+                    fields = AllFields
+                }
+            ]
         }
     ],
     lists:foldl(fun x:do/2, {4, 0}, List).
