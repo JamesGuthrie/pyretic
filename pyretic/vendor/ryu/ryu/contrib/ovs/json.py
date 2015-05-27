@@ -13,21 +13,21 @@
 # limitations under the License.
 
 import re
-import io
+import StringIO
 import sys
 
 __pychecker__ = 'no-stringiter'
 
-escapes = {ord('"'): "\\\"",
-           ord("\\"): "\\\\",
-           ord("\b"): "\\b",
-           ord("\f"): "\\f",
-           ord("\n"): "\\n",
-           ord("\r"): "\\r",
-           ord("\t"): "\\t"}
+escapes = {ord('"'): u"\\\"",
+           ord("\\"): u"\\\\",
+           ord("\b"): u"\\b",
+           ord("\f"): u"\\f",
+           ord("\n"): u"\\n",
+           ord("\r"): u"\\r",
+           ord("\t"): u"\\t"}
 for esc in range(32):
     if esc not in escapes:
-        escapes[esc] = "\\u%04x" % esc
+        escapes[esc] = u"\\u%04x" % esc
 
 SPACES_PER_LEVEL = 2
 
@@ -40,7 +40,7 @@ class _Serializer(object):
         self.depth = 0
 
     def __serialize_string(self, s):
-        self.stream.write('"%s"' % ''.join(escapes.get(ord(c), c) for c in s))
+        self.stream.write(u'"%s"' % ''.join(escapes.get(ord(c), c) for c in s))
 
     def __indent_line(self):
         if self.pretty:
@@ -49,21 +49,21 @@ class _Serializer(object):
 
     def serialize(self, obj):
         if obj is None:
-            self.stream.write("null")
+            self.stream.write(u"null")
         elif obj is False:
-            self.stream.write("false")
+            self.stream.write(u"false")
         elif obj is True:
-            self.stream.write("true")
-        elif type(obj) in (int, int):
-            self.stream.write("%d" % obj)
+            self.stream.write(u"true")
+        elif type(obj) in (int, long):
+            self.stream.write(u"%d" % obj)
         elif type(obj) == float:
             self.stream.write("%.15g" % obj)
-        elif type(obj) == str:
+        elif type(obj) == unicode:
             self.__serialize_string(obj)
         elif type(obj) == str:
-            self.__serialize_string(str(obj))
+            self.__serialize_string(unicode(obj))
         elif type(obj) == dict:
-            self.stream.write("{")
+            self.stream.write(u"{")
 
             self.depth += 1
             self.__indent_line()
@@ -71,21 +71,21 @@ class _Serializer(object):
             if self.sort_keys:
                 items = sorted(obj.items())
             else:
-                items = iter(obj.items())
+                items = obj.iteritems()
             for i, (key, value) in enumerate(items):
                 if i > 0:
-                    self.stream.write(",")
+                    self.stream.write(u",")
                     self.__indent_line()
-                self.__serialize_string(str(key))
-                self.stream.write(":")
+                self.__serialize_string(unicode(key))
+                self.stream.write(u":")
                 if self.pretty:
-                    self.stream.write(' ')
+                    self.stream.write(u' ')
                 self.serialize(value)
 
-            self.stream.write("}")
+            self.stream.write(u"}")
             self.depth -= 1
         elif type(obj) in (list, tuple):
-            self.stream.write("[")
+            self.stream.write(u"[")
             self.depth += 1
 
             if obj:
@@ -93,12 +93,12 @@ class _Serializer(object):
 
                 for i, value in enumerate(obj):
                     if i > 0:
-                        self.stream.write(",")
+                        self.stream.write(u",")
                         self.__indent_line()
                     self.serialize(value)
 
             self.depth -= 1
-            self.stream.write("]")
+            self.stream.write(u"]")
         else:
             raise Exception("can't serialize %s as JSON" % obj)
 
@@ -116,7 +116,7 @@ def to_file(obj, name, pretty=False, sort_keys=True):
 
 
 def to_string(obj, pretty=False, sort_keys=True):
-    output = io.StringIO()
+    output = StringIO.StringIO()
     to_stream(obj, output, pretty, sort_keys)
     s = output.getvalue()
     output.close()
@@ -142,8 +142,8 @@ def from_file(name):
 
 def from_string(s):
     try:
-        s = str(s, 'utf-8')
-    except UnicodeDecodeError as e:
+        s = unicode(s, 'utf-8')
+    except UnicodeDecodeError, e:
         seq = ' '.join(["0x%2x" % ord(c)
                         for c in e.object[e.start:e.end] if ord(c) >= 0x80])
         return ("not a valid UTF-8 string: invalid UTF-8 sequence %s" % seq)
@@ -245,7 +245,7 @@ class Parser(object):
         if m:
             sign, integer, fraction, exp = m.groups()
             if (exp is not None and
-                (int(exp) > sys.maxsize or int(exp) < -sys.maxsize - 1)):
+                (long(exp) > sys.maxint or long(exp) < -sys.maxint - 1)):
                 self.__error("exponent outside valid range")
                 return
 
@@ -261,7 +261,7 @@ class Parser(object):
             if fraction is not None:
                 pow10 -= len(fraction)
             if exp is not None:
-                pow10 += int(exp)
+                pow10 += long(exp)
 
             if significand == 0:
                 self.__parser_input(0)
@@ -347,18 +347,18 @@ class Parser(object):
         x0 = leading & 0x3f
         x1 = trailing & 0x3ff
         return (u << 16) | (x0 << 10) | x1
-    __unescape = {'"': '"',
-                  "\\": "\\",
-                  "/": "/",
-                  "b": "\b",
-                  "f": "\f",
-                  "n": "\n",
-                  "r": "\r",
-                  "t": "\t"}
+    __unescape = {'"': u'"',
+                  "\\": u"\\",
+                  "/": u"/",
+                  "b": u"\b",
+                  "f": u"\f",
+                  "n": u"\n",
+                  "r": u"\r",
+                  "t": u"\t"}
 
     def __lex_finish_string(self):
         inp = self.buffer
-        out = ""
+        out = u""
         while len(inp):
             backslash = inp.find('\\')
             if backslash == -1:
@@ -375,7 +375,7 @@ class Parser(object):
                 out += replacement
                 inp = inp[1:]
                 continue
-            elif inp[0] != 'u':
+            elif inp[0] != u'u':
                 self.__error("bad escape \\%s" % inp[0])
                 return
 
@@ -385,7 +385,7 @@ class Parser(object):
             inp = inp[5:]
 
             if Parser.__is_leading_surrogate(c0):
-                if inp[:2] != '\\u':
+                if inp[:2] != u'\\u':
                     self.__error("malformed escaped surrogate pair")
                     return
                 c1 = self.__lex_4hex(inp[2:6])
@@ -399,7 +399,7 @@ class Parser(object):
                 inp = inp[6:]
             else:
                 code_point = c0
-            out += chr(code_point)
+            out += unichr(code_point)
         self.__parser_input('string', out)
 
     def __lex_string_escape(self, c):
@@ -524,7 +524,7 @@ class Parser(object):
                 self.parse_state = Parser.__parse_object_next
 
     def __parse_value(self, token, string, next_state):
-        if token in [False, None, True] or type(token) in [int, int, float]:
+        if token in [False, None, True] or type(token) in [int, long, float]:
             self.__put_value(token)
         elif token == 'string':
             self.__put_value(string)

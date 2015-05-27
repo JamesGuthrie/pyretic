@@ -269,7 +269,7 @@ class Test_vrrpv3_ipv4(unittest.TestCase):
             type_, vrid, priority, max_adver_int, ip_addresses)
 
         buf = vrrp_.serialize(bytearray(), prev)
-        print((len(buf), type(buf), buf))
+        print(len(buf), type(buf), buf)
         pack_str = vrrp.vrrpv3._PACK_STR + '4s'
         pack_len = struct.calcsize(pack_str)
         res = struct.unpack(pack_str, str(buf))
@@ -434,7 +434,7 @@ class Test_vrrpv3_ipv6(unittest.TestCase):
             type_, vrid, priority, max_adver_int, ip_addresses)
 
         buf = vrrp_.serialize(bytearray(), prev)
-        print((len(buf), type(buf), buf))
+        print(len(buf), type(buf), buf)
         pack_str = vrrp.vrrpv3._PACK_STR + '16s'
         pack_len = struct.calcsize(pack_str)
         res = struct.unpack(pack_str, str(buf))
@@ -465,11 +465,11 @@ class Test_vrrpv3_ipv6(unittest.TestCase):
         primary_ip = '2001:db8:2000::3'
         p0 = self.vrrpv3.create_packet(primary_ip)
         p0.serialize()
-        print((len(p0.data), p0.data))
+        print(len(p0.data), p0.data)
         p1 = packet.Packet(str(p0.data))
         p1.serialize()
-        print((len(p0.data), p0.data))
-        print((len(p1.data), p1.data))
+        print(len(p0.data), p0.data)
+        print(len(p1.data), p1.data)
         eq_(p0.data, p1.data)
 
     def test_to_string(self):

@@ -48,13 +48,13 @@ class TestOfprotCommon(unittest.TestCase):
                                           ryu.ofproto.ofproto_v1_2.OFP_VERSION,
                                           ryu.ofproto.ofproto_v1_3.OFP_VERSION,
                                           ]))
-        consts_mods = set([ofp_mod[0] for ofp_mod in list(ofp_modules.values())])
+        consts_mods = set([ofp_mod[0] for ofp_mod in ofp_modules.values()])
         eq_(consts_mods, set([ryu.ofproto.ofproto_v1_0,
                               ryu.ofproto.ofproto_v1_2,
                               ryu.ofproto.ofproto_v1_3,
                               ]))
 
-        parser_mods = set([ofp_mod[1] for ofp_mod in list(ofp_modules.values())])
+        parser_mods = set([ofp_mod[1] for ofp_mod in ofp_modules.values()])
         import ryu.ofproto.ofproto_v1_0_parser
         import ryu.ofproto.ofproto_v1_2_parser
         import ryu.ofproto.ofproto_v1_3_parser

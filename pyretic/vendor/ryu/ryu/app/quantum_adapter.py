@@ -182,7 +182,7 @@ class OVSSwitch(object):
             # TODO: for multi-controller
             #       not overwrite controllers, but append this controller
             ovs_bridge.set_controller([self.ctrl_addr])
-            for port in list(self.ports.values()):
+            for port in self.ports.values():
                 self.logger.debug('adding port %s', port)
                 self.update_port(port.ofport, port.name, True)
 

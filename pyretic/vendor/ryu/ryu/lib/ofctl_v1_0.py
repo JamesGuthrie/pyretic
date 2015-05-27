@@ -100,7 +100,7 @@ def to_match(dp, attrs):
     tp_src = 0
     tp_dst = 0
 
-    for key, value in list(attrs.items()):
+    for key, value in attrs.items():
         if key == 'in_port':
             in_port = int(value)
             wildcards &= ~ofp.OFPFW_IN_PORT

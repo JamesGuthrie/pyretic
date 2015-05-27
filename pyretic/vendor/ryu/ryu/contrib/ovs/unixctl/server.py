@@ -27,7 +27,7 @@ import ovs.vlog
 
 Message = ovs.jsonrpc.Message
 vlog = ovs.vlog.Vlog("unixctl_server")
-strtypes = str
+strtypes = types.StringTypes
 
 
 class UnixctlConnection(object):
@@ -123,7 +123,7 @@ class UnixctlConnection(object):
                     break
 
             if error is None:
-                unicode_params = [str(p) for p in params]
+                unicode_params = [unicode(p) for p in params]
                 command.callback(self, unicode_params, command.aux)
 
         if error:

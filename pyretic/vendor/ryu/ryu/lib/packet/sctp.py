@@ -227,8 +227,9 @@ class sctp(packet_base.PacketBase):
 # Chunk Types
 #
 #=======================================================================
-class chunk(stringify.StringifyMixin, metaclass=abc.ABCMeta):
+class chunk(stringify.StringifyMixin):
 
+    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!BBH'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
@@ -251,8 +252,9 @@ class chunk(stringify.StringifyMixin, metaclass=abc.ABCMeta):
         return self.length
 
 
-class chunk_init_base(chunk, metaclass=abc.ABCMeta):
+class chunk_init_base(chunk):
 
+    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!BBHIIHHI'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
@@ -301,7 +303,9 @@ class chunk_init_base(chunk, metaclass=abc.ABCMeta):
         return str(buf)
 
 
-class chunk_heartbeat_base(chunk, metaclass=abc.ABCMeta):
+class chunk_heartbeat_base(chunk):
+
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, flags=0, length=0, info=None):
         super(chunk_heartbeat_base, self).__init__(
@@ -332,7 +336,9 @@ class chunk_heartbeat_base(chunk, metaclass=abc.ABCMeta):
         return str(buf)
 
 
-class chunk_ack_base(chunk, metaclass=abc.ABCMeta):
+class chunk_ack_base(chunk):
+
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, flags=0, length=0):
         super(chunk_ack_base, self).__init__(self.chunk_type(), length)
@@ -352,8 +358,9 @@ class chunk_ack_base(chunk, metaclass=abc.ABCMeta):
         return buf
 
 
-class chunk_ecn_base(chunk, metaclass=abc.ABCMeta):
+class chunk_ecn_base(chunk):
 
+    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!BBHI'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
@@ -1167,8 +1174,9 @@ class chunk_shutdown_complete(chunk):
 # Cause Code
 #
 #=======================================================================
-class cause(stringify.StringifyMixin, metaclass=abc.ABCMeta):
+class cause(stringify.StringifyMixin):
 
+    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!HH'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
@@ -1200,7 +1208,9 @@ class cause(stringify.StringifyMixin, metaclass=abc.ABCMeta):
         return length
 
 
-class cause_with_value(cause, metaclass=abc.ABCMeta):
+class cause_with_value(cause):
+
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self, value=None, length=0):
         super(cause_with_value, self).__init__(length)
@@ -1763,8 +1773,9 @@ class cause_protocol_violation(cause_with_value):
 # Chunk Parameter Types
 #
 #=======================================================================
-class param(stringify.StringifyMixin, metaclass=abc.ABCMeta):
+class param(stringify.StringifyMixin):
 
+    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!HH'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 

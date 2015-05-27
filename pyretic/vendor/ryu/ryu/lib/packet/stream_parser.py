@@ -18,7 +18,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class StreamParser(object, metaclass=ABCMeta):
+class StreamParser(object):
     """Streaming parser base class.
 
     An instance of a subclass of this class is used to extract messages
@@ -29,6 +29,8 @@ class StreamParser(object, metaclass=ABCMeta):
     is TCP.
 
     """
+
+    __metaclass__ = ABCMeta
 
     class TooSmallException(Exception):
         pass

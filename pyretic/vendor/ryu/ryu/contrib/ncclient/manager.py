@@ -15,9 +15,9 @@
 
 """This module is a thin layer of abstraction around the library. It exposes all core functionality."""
 
-from . import capabilities
-from . import operations
-from . import transport
+import capabilities
+import operations
+import transport
 
 import logging
 
@@ -76,13 +76,13 @@ class OpExecutor(type):
         def make_wrapper(op_cls):
             def wrapper(self, *args, **kwds):
                 return self.execute(op_cls, *args, **kwds)
-            wrapper.__doc__ = op_cls.request.__doc__
+            wrapper.func_doc = op_cls.request.func_doc
             return wrapper
-        for op_name, op_cls in OPERATIONS.items():
+        for op_name, op_cls in OPERATIONS.iteritems():
             attrs[op_name] = make_wrapper(op_cls)
         return super(OpExecutor, cls).__new__(cls, name, bases, attrs)
 
-class Manager(object, metaclass=OpExecutor):
+class Manager(object):
 
     """For details on the expected behavior of the operations and their parameters refer to :rfc:`4741`.
 
@@ -99,6 +99,8 @@ class Manager(object, metaclass=OpExecutor):
         finally:
             m.close_session()
     """
+
+    __metaclass__ = OpExecutor
 
     def __init__(self, session, timeout=30):
         self._session = session

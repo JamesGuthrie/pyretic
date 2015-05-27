@@ -30,7 +30,7 @@ OF_CONFIG_XSD_FILES = dict(
 # OF_CONFIG_1_0_XSD = os.path.join(SCHEMA_DIR, 'of-config-1.0.xsd')
 # and so on
 _this_module = sys.modules[__name__]
-for (version, xsd_file) in list(OF_CONFIG_XSD_FILES.items()):
+for (version, xsd_file) in OF_CONFIG_XSD_FILES.items():
     setattr(_this_module,
             'OF_CONFIG_%s_XSD' % version.replace('.', '_'), xsd_file)
 

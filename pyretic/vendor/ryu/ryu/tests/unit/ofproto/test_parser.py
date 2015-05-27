@@ -27,7 +27,7 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.ofproto import ofproto_v1_0_parser
 from ryu.ofproto import ofproto_v1_2_parser
 from ryu.ofproto import ofproto_v1_3_parser
-from . import json
+import json
 
 
 # (has_parser, has_serializer)
@@ -112,7 +112,7 @@ class Test_Parser(unittest.TestCase):
     }
 
     def __init__(self, methodName):
-        print('init', methodName)
+        print 'init', methodName
         super(Test_Parser, self).__init__(methodName)
 
     def setUp(self):
@@ -160,10 +160,10 @@ class Test_Parser(unittest.TestCase):
             def _remove(d, names):
                 f = lambda x: _remove(x, names)
                 if isinstance(d, list):
-                    return list(map(f, d))
+                    return map(f, d)
                 if isinstance(d, dict):
                     d2 = {}
-                    for k, v in d.items():
+                    for k, v in d.iteritems():
                         if k in names:
                             continue
                         d2[k] = f(v)
@@ -203,12 +203,12 @@ def _add_tests():
             method_name = ('test_' + file).replace('-', '_').replace('.', '_')
 
             def _run(self, name, wire_msg, json_str):
-                print(('processing %s ...' % name))
+                print ('processing %s ...' % name)
                 self._test_msg(name, wire_msg, json_str)
-            print(('adding %s ...' % method_name))
+            print ('adding %s ...' % method_name)
             f = functools.partial(_run, name=method_name, wire_msg=wire_msg,
                                   json_str=json_str)
-            f.__name__ = method_name
+            f.func_name = method_name
             f.__name__ = method_name
             im = new.instancemethod(f, None, Test_Parser)
             setattr(Test_Parser, method_name, im)

@@ -94,7 +94,8 @@ def pad(bin, len_):
     return bin + (len_ - len(bin)) * '\0'
 
 
-class _AddrPrefix(StringifyMixin, metaclass=abc.ABCMeta):
+class _AddrPrefix(StringifyMixin):
+    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!B'  # length
 
     def __init__(self, length, addr):
@@ -177,7 +178,7 @@ class _Value(object):
     @classmethod
     def parse_value(cls, buf):
         values = struct.unpack_from(cls._VALUE_PACK_STR, buffer(buf))
-        return dict(list(zip(cls._VALUE_FIELDS, values)))
+        return dict(zip(cls._VALUE_FIELDS, values))
 
     def serialize_value(self):
         args = []
@@ -220,7 +221,7 @@ class _TypeDisp(object):
     @classmethod
     def _rev_lookup_type(cls, targ_cls):
         if cls._REV_TYPES is None:
-            rev = dict((v, k) for k, v in cls._TYPES.items())
+            rev = dict((v, k) for k, v in cls._TYPES.iteritems())
             cls._REV_TYPES = rev
         return cls._REV_TYPES[targ_cls]
 
@@ -470,7 +471,7 @@ class _BGPPathAttributeAsPathCommon(_PathAttribute):
                                                  buffer(buf))
             buf = buf[struct.calcsize(cls._SEG_HDR_PACK_STR):]
             l = []
-            for i in range(0, num_as):
+            for i in xrange(0, num_as):
                 (as_number,) = struct.unpack_from(cls._AS_PACK_STR,
                                                   buffer(buf))
                 buf = buf[struct.calcsize(cls._AS_PACK_STR):]

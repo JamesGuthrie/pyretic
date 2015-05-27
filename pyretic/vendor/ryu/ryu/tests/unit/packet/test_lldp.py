@@ -72,8 +72,8 @@ class TestLLDPMandatoryTLV(unittest.TestCase):
         buf = self.data
         pkt = packet.Packet(buf)
 
-        eq_(type(next(pkt)), ethernet.ethernet)
-        eq_(type(next(pkt)), lldp.lldp)
+        eq_(type(pkt.next()), ethernet.ethernet)
+        eq_(type(pkt.next()), lldp.lldp)
 
     def test_tlv(self):
         tlv = lldp.ChassisID(subtype=lldp.ChassisID.SUB_MAC_ADDRESS,
@@ -226,8 +226,8 @@ class TestLLDPOptionalTLV(unittest.TestCase):
         buf = self.data
         pkt = packet.Packet(buf)
 
-        eq_(type(next(pkt)), ethernet.ethernet)
-        lldp_pkt = next(pkt)
+        eq_(type(pkt.next()), ethernet.ethernet)
+        lldp_pkt = pkt.next()
         eq_(type(lldp_pkt), lldp.lldp)
 
         tlvs = lldp_pkt.tlvs

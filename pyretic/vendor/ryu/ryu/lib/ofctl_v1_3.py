@@ -134,7 +134,7 @@ def to_match(dp, attrs):
                     'tp_dst': to_match_tpdst,
                     'mpls_label': match.set_mpls_label}
 
-    for key, value in list(attrs.items()):
+    for key, value in attrs.items():
         if key in convert:
             value = convert[key](value)
         if key in match_append:

@@ -7282,7 +7282,7 @@ class TestOFPMatch(unittest.TestCase):
             header = ofproto_v1_2.OXM_OF_IPV6_SRC_W
             mask = [int(x, 16) for x in mask.split(":")]
             match.set_ipv6_src_masked(ipv6, mask)
-            ipv6 = [x & y for (x, y) in zip(ipv6, mask)]
+            ipv6 = [x & y for (x, y) in itertools.izip(ipv6, mask)]
         self._test_serialize_and_parser(match, header, ipv6, mask)
 
     def test_set_ipv6_src_mid(self):
@@ -7323,7 +7323,7 @@ class TestOFPMatch(unittest.TestCase):
             header = ofproto_v1_2.OXM_OF_IPV6_DST_W
             mask = [int(x, 16) for x in mask.split(":")]
             match.set_ipv6_dst_masked(ipv6, mask)
-            ipv6 = [x & y for (x, y) in zip(ipv6, mask)]
+            ipv6 = [x & y for (x, y) in itertools.izip(ipv6, mask)]
         self._test_serialize_and_parser(match, header, ipv6, mask)
 
     def test_set_ipv6_dst_mid(self):

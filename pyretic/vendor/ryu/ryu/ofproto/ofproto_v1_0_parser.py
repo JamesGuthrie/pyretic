@@ -17,7 +17,7 @@
 import struct
 import binascii
 
-from .ofproto_parser import StringifyMixin, MsgBase, msg_pack_into, msg_str_attr
+from ofproto_parser import StringifyMixin, MsgBase, msg_pack_into, msg_str_attr
 from ryu.lib import addrconv
 from ryu.lib import mac
 from . import ofproto_parser
@@ -1010,7 +1010,7 @@ class OFPDescStats(ofproto_parser.namedtuple('OFPDescStats', (
         desc = struct.unpack_from(ofproto_v1_0.OFP_DESC_STATS_PACK_STR,
                                   buf, offset)
         desc = list(desc)
-        desc = [x.rstrip('\0') for x in desc]
+        desc = map(lambda x: x.rstrip('\0'), desc)
         stats = cls(*desc)
         stats.length = ofproto_v1_0.OFP_DESC_STATS_SIZE
         return stats

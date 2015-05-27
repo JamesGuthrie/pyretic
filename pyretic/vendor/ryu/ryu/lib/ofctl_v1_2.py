@@ -93,7 +93,7 @@ def to_match(dp, attrs):
                     'tp_src': to_match_tpsrc,
                     'tp_dst': to_match_tpdst}
 
-    for key, value in list(attrs.items()):
+    for key, value in attrs.items():
         if key in convert:
             value = convert[key](value)
         if key in match_append:

@@ -373,7 +373,9 @@ class nd_router_advert(stringify.StringifyMixin):
         return length
 
 
-class nd_option(stringify.StringifyMixin, metaclass=abc.ABCMeta):
+class nd_option(stringify.StringifyMixin):
+
+    __metaclass__ = abc.ABCMeta
 
     @classmethod
     @abc.abstractmethod

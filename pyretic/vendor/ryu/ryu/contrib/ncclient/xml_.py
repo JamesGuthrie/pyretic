@@ -15,7 +15,7 @@
 
 "Methods for creating, parsing, and dealing with XML and ElementTree objects."
 
-from io import StringIO
+from cStringIO import StringIO
 from xml.etree import cElementTree as ET
 
 # In case issues come up with XML generation/parsing
@@ -47,16 +47,16 @@ except AttributeError:
         from xml.etree import ElementTree
         # cElementTree uses ElementTree's _namespace_map, so that's ok
         ElementTree._namespace_map[uri] = prefix
-register_namespace.__doc__ = "ElementTree's namespace map determines the prefixes for namespace URI's when serializing to XML. This method allows modifying this map to specify a prefix for a namespace URI."
+register_namespace.func_doc = "ElementTree's namespace map determines the prefixes for namespace URI's when serializing to XML. This method allows modifying this map to specify a prefix for a namespace URI."
 
-for (ns, pre) in list({
+for (ns, pre) in {
     BASE_NS_1_0: 'nc',
     TAILF_AAA_1_1: 'aaa',
     TAILF_EXECD_1_1: 'execd',
     CISCO_CPI_1_0: 'cpi',
     FLOWMON_1_0: 'fm',
     JUNIPER_1_1: 'junos',
-}.items()): 
+}.items(): 
     register_namespace(pre, ns)
 
 qualify = lambda tag, ns=BASE_NS_1_0: tag if ns is None else "{%s}%s" % (ns, tag)
@@ -88,13 +88,13 @@ def validated_element(x, tags=None, attrs=None):
     """
     ele = to_ele(x)
     if tags:
-        if isinstance(tags, str):
+        if isinstance(tags, basestring):
             tags = [tags]
         if ele.tag not in tags:
             raise XMLError("Element [%s] does not meet requirement" % ele.tag)
     if attrs:
         for req in attrs:
-            if isinstance(req, str): req = [req]
+            if isinstance(req, basestring): req = [req]
             for alt in req:
                 if alt in ele.attrib:
                     break

@@ -106,12 +106,12 @@ class Atom(object):
     def from_json(base, json, symtab=None):
         type_ = base.type
         json = ovs.db.parser.float_to_int(json)
-        if ((type_ == ovs.db.types.IntegerType and type(json) in [int, int])
+        if ((type_ == ovs.db.types.IntegerType and type(json) in [int, long])
             or (type_ == ovs.db.types.RealType
-                and type(json) in [int, int, float])
+                and type(json) in [int, long, float])
             or (type_ == ovs.db.types.BooleanType and type(json) == bool)
             or (type_ == ovs.db.types.StringType
-                and type(json) in [str, str])):
+                and type(json) in [str, unicode])):
             atom = Atom(type_, json)
         elif type_ == ovs.db.types.UuidType:
             atom = Atom(type_, ovs.ovsuuid.from_json(json, symtab))
@@ -235,13 +235,13 @@ class Atom(object):
 
     @staticmethod
     def new(x):
-        if type(x) in [int, int]:
+        if type(x) in [int, long]:
             t = ovs.db.types.IntegerType
         elif type(x) == float:
             t = ovs.db.types.RealType
         elif x in [False, True]:
             t = ovs.db.types.BooleanType
-        elif type(x) in [str, str]:
+        elif type(x) in [str, unicode]:
             t = ovs.db.types.StringType
         elif isinstance(x, uuid):
             t = ovs.db.types.UuidType
@@ -293,7 +293,7 @@ class Datum(object):
         This function is not commonly useful because the most ordinary way to
         obtain a datum is ultimately via Datum.from_json() or Atom.from_json(),
         which check constraints themselves."""
-        for keyAtom, valueAtom in self.values.items():
+        for keyAtom, valueAtom in self.values.iteritems():
             keyAtom.check_constraints(self.type.key)
             if valueAtom is not None:
                 valueAtom.check_constraints(self.type.value)
@@ -354,7 +354,7 @@ class Datum(object):
             return ["map", [[k.to_json(), v.to_json()]
                             for k, v in sorted(self.values.items())]]
         elif len(self.values) == 1:
-            key = list(self.values.keys())[0]
+            key = self.values.keys()[0]
             return key.to_json()
         else:
             return ["set", [k.to_json() for k in sorted(self.values.keys())]]
@@ -388,9 +388,9 @@ class Datum(object):
 
     def as_list(self):
         if self.type.is_map():
-            return [[k.value, v.value] for k, v in self.values.items()]
+            return [[k.value, v.value] for k, v in self.values.iteritems()]
         else:
-            return [k.value for k in self.values.keys()]
+            return [k.value for k in self.values.iterkeys()]
 
     def as_dict(self):
         return dict(self.values)
@@ -398,10 +398,10 @@ class Datum(object):
     def as_scalar(self):
         if len(self.values) == 1:
             if self.type.is_map():
-                k, v = iter(self.values.items())[0]
+                k, v = self.values.iteritems()[0]
                 return [k.value, v.value]
             else:
-                return list(self.values.keys())[0].value
+                return self.values.keys()[0].value
         else:
             return None
 
@@ -448,7 +448,7 @@ class Datum(object):
                 return value
         elif self.type.is_map():
             value = {}
-            for k, v in self.values.items():
+            for k, v in self.values.iteritems():
                 dk = uuid_to_row(k.value, self.type.key)
                 dv = uuid_to_row(v.value, self.type.value)
                 if dk is not None and dv is not None:
@@ -476,7 +476,7 @@ class Datum(object):
         'type_'."""
         d = {}
         if type(value) == dict:
-            for k, v in value.items():
+            for k, v in value.iteritems():
                 ka = Atom.from_python(type_.key, row_to_uuid(k))
                 va = Atom.from_python(type_.value, row_to_uuid(v))
                 d[ka] = va

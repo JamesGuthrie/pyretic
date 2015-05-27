@@ -159,7 +159,7 @@ class Stp(app_manager.RyuApp):
         self.bridge_list = {}
 
     def close(self):
-        for dpid in list(self.bridge_list.keys()):
+        for dpid in self.bridge_list.keys():
             self._unregister_bridge(dpid)
 
     def _set_logger(self):
@@ -336,7 +336,7 @@ class Stp(app_manager.RyuApp):
 
     @staticmethod
     def _cmp_obj(obj1, obj2):
-        for key in list(obj1.__dict__.keys()):
+        for key in obj1.__dict__.keys():
             if (not hasattr(obj2, key)
                     or getattr(obj1, key) != getattr(obj2, key)):
                 return SUPERIOR
@@ -360,9 +360,9 @@ class Bridge(object):
         # Bridge data
         bridge_conf = config.get('bridge', {})
         values = self._DEFAULT_VALUE
-        for key, value in list(bridge_conf.items()):
+        for key, value in bridge_conf.items():
             values[key] = value
-        system_id = list(dp.ports.values())[0].hw_addr
+        system_id = dp.ports.values()[0].hw_addr
 
         self.bridge_id = BridgeId(values['priority'],
                                   values['sys_ext_id'],
@@ -377,7 +377,7 @@ class Bridge(object):
         # Ports
         self.ports = {}
         self.ports_conf = config.get('ports', {})
-        for ofport in list(dp.ports.values()):
+        for ofport in dp.ports.values():
             self.port_add(ofport)
 
     @property
@@ -385,7 +385,7 @@ class Bridge(object):
         return bool(self.bridge_id.value == self.root_priority.root_id.value)
 
     def delete(self):
-        for port in list(self.ports.values()):
+        for port in self.ports.values():
             port.delete()
 
     def port_add(self, ofport):
@@ -475,7 +475,7 @@ class Bridge(object):
     def recalculate_spanning_tree(self, init=True):
         """ Re-calculation of spanning tree. """
         # All port down.
-        for port in list(self.ports.values()):
+        for port in self.ports.values():
             if port.state is not PORT_STATE_DISABLE:
                 port.down(PORT_STATE_BLOCK, msg_init=init)
 
@@ -490,7 +490,7 @@ class Bridge(object):
 
         if init:
             self.logger.info('Root bridge.', extra=self.dpid_str)
-            for port_no in list(self.ports.keys()):
+            for port_no in self.ports.keys():
                 port_roles[port_no] = DESIGNATED_PORT
         else:
             (port_roles,
@@ -498,7 +498,7 @@ class Bridge(object):
              self.root_times) = self._spanning_tree_algorithm()
 
         # All port up.
-        for port_no, role in list(port_roles.items()):
+        for port_no, role in port_roles.items():
             if self.ports[port_no].state is not PORT_STATE_DISABLE:
                 self.ports[port_no].up(role, self.root_priority,
                                        self.root_times)
@@ -520,7 +520,7 @@ class Bridge(object):
             root_priority = self.root_priority
             root_times = self.root_times
 
-            for port_no in list(self.ports.keys()):
+            for port_no in self.ports.keys():
                 if self.ports[port_no].state is not PORT_STATE_DISABLE:
                     port_roles[port_no] = DESIGNATED_PORT
         else:
@@ -535,7 +535,7 @@ class Bridge(object):
             for port_no in d_ports:
                 port_roles[port_no] = DESIGNATED_PORT
 
-            for port in list(self.ports.values()):
+            for port in self.ports.values():
                 if port.state is not PORT_STATE_DISABLE:
                     port_roles.setdefault(port.ofport.port_no,
                                           NON_DESIGNATED_PORT)
@@ -547,7 +547,7 @@ class Bridge(object):
             It is determined by the cost of path, etc. """
         root_port = None
 
-        for port in list(self.ports.values()):
+        for port in self.ports.values():
             root_msg = (self.root_priority if root_port is None
                         else root_port.designated_priority)
             port_msg = port.designated_priority
@@ -581,7 +581,7 @@ class Bridge(object):
         d_ports = []
         root_msg = root_port.designated_priority
 
-        for port in list(self.ports.values()):
+        for port in self.ports.values():
             port_msg = port.designated_priority
             if (port.state is PORT_STATE_DISABLE
                     or port.ofport.port_no == root_port.ofport.port_no):
@@ -605,7 +605,7 @@ class Bridge(object):
     def topology_change_notify(self, port_state):
         notice = False
         if port_state is PORT_STATE_FORWARD:
-            for port in list(self.ports.values()):
+            for port in self.ports.values():
                 if port.role is DESIGNATED_PORT:
                     notice = True
                     break
@@ -620,12 +620,12 @@ class Bridge(object):
                 self._transmit_tcn_bpdu()
 
     def _transmit_tc_bpdu(self):
-        for port in list(self.ports.values()):
+        for port in self.ports.values():
             port.transmit_tc_bpdu()
 
     def _transmit_tcn_bpdu(self):
         root_port = None
-        for port in list(self.ports.values()):
+        for port in self.ports.values():
             if port.role is ROOT_PORT:
                 root_port = port
                 break
@@ -633,7 +633,7 @@ class Bridge(object):
             root_port.transmit_tcn_bpdu()
 
     def _forward_tc_bpdu(self, fwd_flg):
-        for port in list(self.ports.values()):
+        for port in self.ports.values():
             port.send_tc_flg = fwd_flg
 
 
@@ -672,11 +672,11 @@ class Port(object):
         self.ofport = ofport
         # Port data
         values = self._DEFAULT_VALUE
-        for rate in sorted(list(self._PATH_COST.keys()), reverse=True):
+        for rate in sorted(self._PATH_COST.keys(), reverse=True):
             if ofport.curr & rate:
                 values['path_cost'] = self._PATH_COST[rate]
                 break
-        for key, value in list(values.items()):
+        for key, value in values.items():
             values[key] = value
         self.port_id = PortId(values['priority'], ofport.port_no)
         self.path_cost = values['path_cost']

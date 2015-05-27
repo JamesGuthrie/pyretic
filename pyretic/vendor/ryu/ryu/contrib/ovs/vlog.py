@@ -67,7 +67,7 @@ class Vlog:
         level = LEVELS.get(level.lower(), logging.DEBUG)
         Vlog.__msg_num += 1
 
-        for f, f_level in Vlog.__mfl[self.name].items():
+        for f, f_level in Vlog.__mfl[self.name].iteritems():
             f_level = LEVELS.get(f_level, logging.CRITICAL)
             if level >= f_level:
                 logging.getLogger(f).log(level, message, **kwargs)
@@ -123,7 +123,7 @@ class Vlog:
 
         ovs.unixctl.command_register("vlog/reopen", "", 0, 0,
                                      Vlog._unixctl_vlog_reopen, None)
-        ovs.unixctl.command_register("vlog/set", "spec", 1, sys.maxsize,
+        ovs.unixctl.command_register("vlog/set", "spec", 1, sys.maxint,
                                      Vlog._unixctl_vlog_set, None)
         ovs.unixctl.command_register("vlog/list", "", 0, 0,
                                      Vlog._unixctl_vlog_list, None)
@@ -149,12 +149,12 @@ class Vlog:
             return
 
         if module == "any":
-            modules = list(Vlog.__mfl.keys())
+            modules = Vlog.__mfl.keys()
         else:
             modules = [module]
 
         if facility == "any":
-            facilities = list(FACILITIES.keys())
+            facilities = FACILITIES.keys()
         else:
             facilities = [facility]
 

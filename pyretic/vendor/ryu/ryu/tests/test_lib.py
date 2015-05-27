@@ -174,7 +174,7 @@ class RyuTestResult(result.TextTestResult):
         except TypeError:
             # This is for compatibility with Python 2.3.
             exc_info = self._exc_info_to_string(err)
-        for cls, (storage, label, isfail) in list(self.errorClasses.items()):
+        for cls, (storage, label, isfail) in self.errorClasses.items():
             if result.isclass(ec) and issubclass(ec, cls):
                 if isfail:
                     test.passwd = False

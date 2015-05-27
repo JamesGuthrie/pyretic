@@ -396,9 +396,9 @@ class GRETunnel(app_manager.RyuApp):
         self.tunnels = kwargs['tunnels']
 
         self.port_set = PortSet(**kwargs)
-        list(map(lambda ev_cls: self.port_set.register_observer(ev_cls, self.name),
+        map(lambda ev_cls: self.port_set.register_observer(ev_cls, self.name),
             [dpset.EventDP, PortSet.EventTunnelKeyDel, PortSet.EventVMPort,
-             PortSet.EventTunnelPort, ofp_event.EventOFPPacketIn]))
+             PortSet.EventTunnelPort, ofp_event.EventOFPPacketIn])
 
     # TODO: track active vm/tunnel ports
 
@@ -565,7 +565,7 @@ class GRETunnel(app_manager.RyuApp):
                                    actions)
 
         # TUNNEL_OUT_TABLE: unicast
-        for remote_mac_address, tunnel_ports in list(mac_to_ports.items()):
+        for remote_mac_address, tunnel_ports in mac_to_ports.items():
             rule = cls_rule(tun_id=tunnel_key, dl_dst=remote_mac_address)
             outputs = [ofproto_parser.OFPActionOutput(tunnel_port_no)
                        for tunnel_port_no in tunnel_ports]

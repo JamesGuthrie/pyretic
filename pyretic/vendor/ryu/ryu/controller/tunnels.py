@@ -80,12 +80,12 @@ class TunnelKeys(dict):
     def register_key(self, network_id, tunnel_key):
         if network_id in self:
             raise ryu_exc.NetworkAlreadyExist(network_id=network_id)
-        if tunnel_key in list(self.values()):
+        if tunnel_key in self.values():
             raise TunnelKeyAlreadyExist(tunnel_key=tunnel_key)
         self._set_key(network_id, tunnel_key)
 
     def update_key(self, network_id, tunnel_key):
-        if network_id not in self and tunnel_key in list(self.values()):
+        if network_id not in self and tunnel_key in self.values():
             raise TunnelKeyAlreadyExist(key=tunnel_key)
 
         key = self.get(network_id)
@@ -152,7 +152,7 @@ class DPIDs(object):
         except KeyError:
             raise ryu_exc.PortNotFound(dpid=dpid, port=None, network_id=None)
 
-        res = [port_no for (port_no, remote_dpid_) in list(dp.items())
+        res = [port_no for (port_no, remote_dpid_) in dp.items()
                if remote_dpid_ == remote_dpid]
         assert len(res) <= 1
         if len(res) == 0:
@@ -180,7 +180,7 @@ class Tunnels(app_manager.RyuApp):
         self.tunnel_keys.delete_key(network_id)
 
     def list_ports(self, dpid):
-        return list(self.dpids.list_ports(dpid).keys())
+        return self.dpids.list_ports(dpid).keys()
 
     def register_port(self, dpid, port_no, remote_dpid):
         self.dpids.add_remote_dpid(dpid, port_no, remote_dpid)

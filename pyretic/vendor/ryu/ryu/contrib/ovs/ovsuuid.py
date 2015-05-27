@@ -38,16 +38,16 @@ def from_string(s):
 
 def from_json(json, symtab=None):
     try:
-        s = ovs.db.parser.unwrap_json(json, "uuid", [str, str], "string")
+        s = ovs.db.parser.unwrap_json(json, "uuid", [str, unicode], "string")
         if not uuidRE.match(s):
             raise error.Error("\"%s\" is not a valid UUID" % s, json)
         return uuid.UUID(s)
-    except error.Error as e:
+    except error.Error, e:
         if not symtab:
             raise e
         try:
             name = ovs.db.parser.unwrap_json(json, "named-uuid",
-                                             [str, str], "string")
+                                             [str, unicode], "string")
         except error.Error:
             raise e
 

@@ -42,8 +42,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Ryu'
-copyright = '2011-2013 Nippon Telegraph and Telephone Corporation'
+project = u'Ryu'
+copyright = u'2011-2013 Nippon Telegraph and Telephone Corporation'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -180,8 +180,8 @@ htmlhelp_basename = 'ryudoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'ryu.tex', 'ryu Documentation',
-   'ryu development team', 'manual'),
+  ('index', 'ryu.tex', u'ryu Documentation',
+   u'ryu development team', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -213,8 +213,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'ryu', 'ryu Documentation',
-     ['ryu development team'], 1),
-    ('man/ryu_manager', 'ryu-manager', 'ryu manager',
-     ['ryu development team'], 1),
+    ('index', 'ryu', u'ryu Documentation',
+     [u'ryu development team'], 1),
+    ('man/ryu_manager', 'ryu-manager', u'ryu manager',
+     [u'ryu development team'], 1),
 ]

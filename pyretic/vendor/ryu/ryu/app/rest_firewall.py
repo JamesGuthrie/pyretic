@@ -366,7 +366,7 @@ class FirewallController(ControllerBase):
         dpid_str = dpid_lib.dpid_to_str(dp.id)
         try:
             f_ofs = Firewall(dp)
-        except OFPUnknownVersion as message:
+        except OFPUnknownVersion, message:
             FirewallController._LOGGER.info('dpid=%s: %s',
                                             dpid_str, message)
             return
@@ -415,11 +415,11 @@ class FirewallController(ControllerBase):
     def _access_module(self, switchid, func, waiters=None):
         try:
             dps = self._OFS_LIST.get_ofs(switchid)
-        except ValueError as message:
+        except ValueError, message:
             return Response(status=400, body=str(message))
 
         msgs = []
-        for f_ofs in list(dps.values()):
+        for f_ofs in dps.values():
             function = getattr(f_ofs, func)
             msg = function() if waiters is None else function(waiters)
             msgs.append(msg)
@@ -455,11 +455,11 @@ class FirewallController(ControllerBase):
         try:
             dps = self._OFS_LIST.get_ofs(switchid)
             vid = FirewallController._conv_toint_vlanid(vlan_id)
-        except ValueError as message:
+        except ValueError, message:
             return Response(status=400, body=str(message))
 
         msgs = []
-        for f_ofs in list(dps.values()):
+        for f_ofs in dps.values():
             rules = f_ofs.get_rules(self.waiters, vid)
             msgs.append(rules)
 
@@ -476,15 +476,15 @@ class FirewallController(ControllerBase):
         try:
             dps = self._OFS_LIST.get_ofs(switchid)
             vid = FirewallController._conv_toint_vlanid(vlan_id)
-        except ValueError as message:
+        except ValueError, message:
             return Response(status=400, body=str(message))
 
         msgs = []
-        for f_ofs in list(dps.values()):
+        for f_ofs in dps.values():
             try:
                 msg = f_ofs.set_rule(rule, vid)
                 msgs.append(msg)
-            except ValueError as message:
+            except ValueError, message:
                 return Response(status=400, body=str(message))
 
         body = json.dumps(msgs)
@@ -500,15 +500,15 @@ class FirewallController(ControllerBase):
         try:
             dps = self._OFS_LIST.get_ofs(switchid)
             vid = FirewallController._conv_toint_vlanid(vlan_id)
-        except ValueError as message:
+        except ValueError, message:
             return Response(status=400, body=str(message))
 
         msgs = []
-        for f_ofs in list(dps.values()):
+        for f_ofs in dps.values():
             try:
                 msg = f_ofs.delete_rule(ruleid, self.waiters, vid)
                 msgs.append(msg)
-            except ValueError as message:
+            except ValueError, message:
                 return Response(status=400, body=str(message))
 
         body = json.dumps(msgs)
@@ -551,13 +551,13 @@ class Firewall(object):
         self.ofctl = self._OFCTL[version]
 
     def _update_vlan_list(self, vlan_list):
-        for vlan_id in list(self.vlan_list.keys()):
+        for vlan_id in self.vlan_list.keys():
             if vlan_id is not VLANID_NONE and vlan_id not in vlan_list:
                 del self.vlan_list[vlan_id]
 
     def _get_cookie(self, vlan_id):
         if vlan_id == REST_ALL:
-            vlan_ids = list(self.vlan_list.keys())
+            vlan_ids = self.vlan_list.keys()
         else:
             vlan_ids = [vlan_id]
 
@@ -741,7 +741,7 @@ class Firewall(object):
                         rules[vid].append(rule)
 
         get_data = []
-        for vid, rule in list(rules.items()):
+        for vid, rule in rules.items():
             if vid == VLANID_NONE:
                 vid_data = {REST_RULES: rule}
             else:
@@ -807,7 +807,7 @@ class Firewall(object):
                                      else ',%d') % rule_id)
 
             msg = []
-            for vid, rule_ids in list(delete_ids.items()):
+            for vid, rule_ids in delete_ids.items():
                 del_msg = {'result': 'success',
                            'details': 'Rule deleted. : ruleID=%s' % rule_ids}
                 if vid != VLANID_NONE:
@@ -850,7 +850,7 @@ class Match(object):
         match = {}
         set_dltype_flg = False
 
-        for key, value in list(rest.items()):
+        for key, value in rest.items():
             if (key == REST_SRC_IP or key == REST_DST_IP
                     or key == REST_NW_PROTO):
                 if (REST_DL_TYPE in rest) is False:
@@ -886,7 +886,7 @@ class Match(object):
         ip_dontcare = '0.0.0.0'
 
         match = {}
-        for key, value in list(of_match.items()):
+        for key, value in of_match.items():
             if key == REST_SRC_MAC or key == REST_DST_MAC:
                 if value == mac_dontcare:
                     continue
@@ -898,7 +898,7 @@ class Match(object):
 
             if key in Match._CONVERT:
                 conv = Match._CONVERT[key]
-                conv = dict((value, key) for key, value in list(conv.items()))
+                conv = dict((value, key) for key, value in conv.items())
                 match.setdefault(key, conv[value])
             else:
                 match.setdefault(key, value)
@@ -911,7 +911,7 @@ class Match(object):
         ip_dontcare = '0.0.0.0'
 
         match = {}
-        for key, value in list(of_match.items()):
+        for key, value in of_match.items():
             if key == REST_SRC_MAC or key == REST_DST_MAC:
                 if value == mac_dontcare:
                     continue

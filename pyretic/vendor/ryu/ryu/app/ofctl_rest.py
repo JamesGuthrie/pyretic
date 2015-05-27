@@ -71,7 +71,7 @@ class StatsController(ControllerBase):
         self.waiters = data['waiters']
 
     def get_dpids(self, req, **_kwargs):
-        dps = list(self.dpset.dps.keys())
+        dps = self.dpset.dps.keys()
         body = json.dumps(dps)
         return (Response(content_type='application/json', body=body))
 

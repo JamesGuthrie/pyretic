@@ -106,7 +106,7 @@ class Packet(object):
             return result[0]
         return None
 
-    def __next__(self):
+    def next(self):
         try:
             p = self.protocols[self.protocol_idx]
         except:

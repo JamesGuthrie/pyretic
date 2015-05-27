@@ -100,7 +100,7 @@ class DBClient(object):
     def _list_tables(self, rpc, *args):
         database = args[0]
         schema_ = self._fetch_schema(rpc, database)
-        return [table.to_json() for table in list(schema_.tables.values())]
+        return [table.to_json() for table in schema_.tables.values()]
 
     def _list_columns(self, rpc, *args):
         database = args[0]
@@ -110,14 +110,14 @@ class DBClient(object):
 
         schema_ = self._fetch_schema(rpc, database)
         if table_name is None:
-            tables = [table for table in list(schema_.tables.values())]
+            tables = [table for table in schema_.tables.values()]
         else:
-            tables = [table for table in list(schema_.tables.values())
+            tables = [table for table in schema_.tables.values()
                       if table.name == table_name]
 
         columns = []
         for table in tables:
-            columns.extend(list(table.columns.values()))
+            columns.extend(table.columns.values())
         return [column.to_json() for column in columns]
 
     def _transact(self, rpc, *args):

@@ -17,7 +17,7 @@ import types
 import ovs.util
 
 commands = {}
-strtypes = str
+strtypes = types.StringTypes
 
 
 class _UnixctlCommand(object):

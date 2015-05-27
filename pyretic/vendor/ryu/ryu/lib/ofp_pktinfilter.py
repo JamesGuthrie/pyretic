@@ -36,7 +36,9 @@ def packet_in_filter(cls, args=None):
     return _packet_in_filter
 
 
-class PacketInFilterBase(object, metaclass=ABCMeta):
+class PacketInFilterBase(object):
+    __metaclass__ = ABCMeta
+
     def __init__(self, args):
         self.args = args
 

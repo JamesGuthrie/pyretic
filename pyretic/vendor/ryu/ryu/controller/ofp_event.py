@@ -66,7 +66,7 @@ def _create_ofp_msg_ev_from_module(ofp_praser):
         _create_ofp_msg_ev_class(cls)
 
 
-for ofp_mods in list(ofproto.get_ofp_modules().values()):
+for ofp_mods in ofproto.get_ofp_modules().values():
     ofp_parser = ofp_mods[1]
     # print 'loading module %s' % ofp_parser
     _create_ofp_msg_ev_from_module(ofp_parser)

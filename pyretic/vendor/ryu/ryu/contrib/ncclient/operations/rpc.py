@@ -18,7 +18,7 @@ from uuid import uuid1
 from ncclient.xml_ import *
 from ncclient.transport import SessionListener
 
-from .errors import OperationError, TimeoutExpiredError, MissingCapabilityError
+from errors import OperationError, TimeoutExpiredError, MissingCapabilityError
 
 import logging
 logger = logging.getLogger("ncclient.operations.rpc")
@@ -39,7 +39,7 @@ class RPCError(OperationError):
     
     def __init__(self, raw):
         self._raw = raw
-        for attr in list(RPCError.tag_to_attr.values()):
+        for attr in RPCError.tag_to_attr.values():
             setattr(self, attr, None)
         for subele in raw:
             attr = RPCError.tag_to_attr.get(subele.tag, None)
@@ -51,7 +51,7 @@ class RPCError(OperationError):
             OperationError.__init__(self, self.to_dict())
     
     def to_dict(self):
-        return dict([ (attr[1:], getattr(self, attr)) for attr in list(RPCError.tag_to_attr.values()) ])
+        return dict([ (attr[1:], getattr(self, attr)) for attr in RPCError.tag_to_attr.values() ])
     
     @property
     def xml(self):
@@ -200,7 +200,7 @@ class RPCReplyListener(SessionListener): # internal use
     
     def errback(self, err):
         try:
-            for rpc in list(self._id2rpc.values()):
+            for rpc in self._id2rpc.values():
                 rpc.deliver_error(err)
         finally:
             self._id2rpc.clear()

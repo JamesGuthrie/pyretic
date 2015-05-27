@@ -62,7 +62,7 @@ class Networks(dict):
         self.send_event = f
 
     def list_networks(self):
-        return list(self.keys())
+        return self.keys()
 
     def has_network(self, network_id):
         return network_id in self
@@ -183,13 +183,13 @@ class DPIDs(dict):
 
     def get_ports(self, dpid, network_id=None, mac_address=None):
         if network_id is None:
-            return list(self.get(dpid, {}).values())
+            return self.get(dpid, {}).values()
         if mac_address is None:
-            return [p for p in list(self.get(dpid, {}).values())
+            return [p for p in self.get(dpid, {}).values()
                     if p.network_id == network_id]
 
         # live-migration: There can be two ports that have same mac address.
-        return [p for p in list(self.get(dpid, {}).values())
+        return [p for p in self.get(dpid, {}).values()
                 if p.network_id == network_id and p.mac_address == mac_address]
 
     def get_port(self, dpid, port_no):

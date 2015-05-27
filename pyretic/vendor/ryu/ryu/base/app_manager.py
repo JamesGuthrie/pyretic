@@ -24,7 +24,6 @@ from ryu.controller.handler import register_instance, get_dependent_services
 from ryu.controller.controller import Datapath
 from ryu.controller.event import EventRequestBase, EventReplyBase
 from ryu.lib import hub
-import collections
 
 LOG = logging.getLogger('ryu.base.app_manager')
 
@@ -54,7 +53,7 @@ class RyuApp(object):
         """
         Return iterator over the (key, contxt class) of application context
         """
-        return iter(cls._CONTEXTS.items())
+        return cls._CONTEXTS.iteritems()
 
     def __init__(self, *_args, **_kwargs):
         super(RyuApp, self).__init__()
@@ -68,7 +67,7 @@ class RyuApp(object):
         self.threads.append(hub.spawn(self._event_loop))
 
     def register_handler(self, ev_cls, handler):
-        assert isinstance(handler, collections.Callable)
+        assert callable(handler)
         self.event_handlers.setdefault(ev_cls, [])
         self.event_handlers[ev_cls].append(handler)
 
@@ -87,7 +86,7 @@ class RyuApp(object):
 
     def get_observers(self, ev, state):
         observers = []
-        for k, v in self.observers.get(ev.__class__, {}).items():
+        for k, v in self.observers.get(ev.__class__, {}).iteritems():
             if not state or not v or state in v:
                 observers.append(k)
 
@@ -187,7 +186,7 @@ class AppManager(object):
                 app_lists.extend(services)
 
     def create_contexts(self):
-        for key, cls in list(self.contexts_cls.items()):
+        for key, cls in self.contexts_cls.items():
             context = cls()
             LOG.info('creating context %s', key)
             assert not key in self.contexts
@@ -198,14 +197,14 @@ class AppManager(object):
         return self.contexts
 
     def instantiate_apps(self, *args, **kwargs):
-        for app_name, cls in list(self.applications_cls.items()):
+        for app_name, cls in self.applications_cls.items():
             # for now, only single instance of a given module
             # Do we need to support multiple instances?
             # Yes, maybe for slicing.
             LOG.info('instantiating app %s', app_name)
 
             if hasattr(cls, 'OFP_VERSIONS'):
-                for k in list(Datapath.supported_ofp_version.keys()):
+                for k in Datapath.supported_ofp_version.keys():
                     if not k in cls.OFP_VERSIONS:
                         del Datapath.supported_ofp_version[k]
 
@@ -217,7 +216,7 @@ class AppManager(object):
             register_app(app)
             self.applications[app_name] = app
 
-        for i in list(SERVICE_BRICKS.values()):
+        for i in SERVICE_BRICKS.values():
             for _k, m in inspect.getmembers(i, inspect.ismethod):
                 if not hasattr(m, 'observer'):
                     continue
@@ -229,23 +228,23 @@ class AppManager(object):
                     brick.register_observer(m.ev_cls, i.name, m.dispatchers)
 
                 # allow RyuApp and Event class are in different module
-                for brick in SERVICE_BRICKS.values():
+                for brick in SERVICE_BRICKS.itervalues():
                     if m.ev_cls in brick._EVENTS:
                         brick.register_observer(m.ev_cls, i.name,
                                                 m.dispatchers)
 
-        for brick, i in list(SERVICE_BRICKS.items()):
+        for brick, i in SERVICE_BRICKS.items():
             LOG.debug("BRICK %s" % brick)
-            for ev_cls, list in list(i.observers.items()):
+            for ev_cls, list in i.observers.items():
                 LOG.debug("  PROVIDES %s TO %s" % (ev_cls.__name__, list))
-            for ev_cls in list(i.event_handlers.keys()):
+            for ev_cls in i.event_handlers.keys():
                 LOG.debug("  CONSUMES %s" % (ev_cls.__name__,))
 
     def close(self):
         def close_all(close_dict):
-            for app in list(close_dict.values()):
+            for app in close_dict.values():
                 close_method = getattr(app, 'close', None)
-                if isinstance(close_method, collections.Callable):
+                if callable(close_method):
                     close_method()
             close_dict.clear()
 

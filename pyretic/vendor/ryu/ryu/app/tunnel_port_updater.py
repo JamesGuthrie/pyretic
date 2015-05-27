@@ -214,7 +214,7 @@ class TunnelDP(object):
 
     def _tunnel_port_exists(self, remote_dpid, remote_ip):
         return any(tp.remote_dpid == remote_dpid and tp.remote_ip == remote_ip
-                   for tp in list(self.tunnels.values()))
+                   for tp in self.tunnels.values())
 
     def _add_tunnel_port(self, remote_dpid, remote_ip):
         self.logger.debug('add_tunnel_port local %s %s remote %s %s',
@@ -244,7 +244,7 @@ class TunnelDP(object):
         self._api_delete(port_no)
 
     def _del_tunnel_port_ip(self, remote_ip):
-        for tp in list(self.tunnels.values()):
+        for tp in self.tunnels.values():
             if tp.remote_ip == remote_ip:
                 self._del_tunnel_port(tp.port_no, self.tunnel_ip, remote_ip)
                 break
@@ -397,7 +397,7 @@ class TunnelPortUpdater(app_manager.RyuApp):
                     self.cs.get_key(dpid, cs_key.OVS_TUNNEL_ADDR))
 
         if ev.key == cs_key.OVS_TUNNEL_ADDR:
-            for tunnel_dp in list(self.tunnel_dpset.values()):
+            for tunnel_dp in self.tunnel_dpset.values():
                 tunnel_dp.request_update_remote(ev.dpid, ev.value)
 
     @handler.set_ev_cls(conf_switch.EventConfSwitchDel)

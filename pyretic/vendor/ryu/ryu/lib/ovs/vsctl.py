@@ -42,7 +42,7 @@ def ovsrec_row_changes_to_string(ovsrec_row):
         return ovsrec_row._changes
 
     return dict((key, value.to_string())
-                for key, value in list(ovsrec_row._changes.items()))
+                for key, value in ovsrec_row._changes.items())
 
 
 # for debug
@@ -51,7 +51,7 @@ def ovsrec_row_to_string(ovsrec_row):
     output += 'uuid: %s ' % ovsrec_row.uuid
     if ovsrec_row._data:
         output += '_data: %s ' % dict((key, value.to_string()) for key, value
-                                      in list(ovsrec_row._data.items()))
+                                      in ovsrec_row._data.items())
     else:
         output += '_data: %s ' % ovsrec_row._data
     output += '_changes: %s' % ovsrec_row_changes_to_string(ovsrec_row)
@@ -99,7 +99,7 @@ def datum_from_string(type_, value_string, symtab=None):
         d = dict(v.split('=', 1) for v in value_string.split(','))
         d = dict((atom_from_string(type_.key, key, symtab),
                   atom_from_string(type_.value, value, symtab))
-                 for key, value in list(d.items()))
+                 for key, value in d.items())
     elif type_.is_set():
         if value_string.startswith('['):
             # TODO:set case
@@ -118,7 +118,7 @@ def datum_from_string(type_, value_string, symtab=None):
 
 def ifind(pred, seq):
     try:
-        return next(itertools.ifilter(pred, seq))
+        return itertools.ifilter(pred, seq).next()
     except StopIteration:
         return None
 
@@ -200,11 +200,11 @@ class VSCtlContext(object):
             return
 
         self.verify_bridges()
-        for ovsrec_bridge in list(self.idl.tables[
-                vswitch_idl.OVSREC_TABLE_BRIDGE].rows.values()):
+        for ovsrec_bridge in self.idl.tables[
+                vswitch_idl.OVSREC_TABLE_BRIDGE].rows.values():
             ovsrec_bridge.verify(vswitch_idl.OVSREC_BRIDGE_COL_PORTS)
-        for ovsrec_port in list(self.idl.tables[
-                vswitch_idl.OVSREC_TABLE_PORT].rows.values()):
+        for ovsrec_port in self.idl.tables[
+                vswitch_idl.OVSREC_TABLE_PORT].rows.values():
             ovsrec_port.verify(vswitch_idl.OVSREC_PORT_COL_INTERFACES)
         self.verified_ports = True
 
@@ -281,7 +281,7 @@ class VSCtlContext(object):
 
         bridges = set()
         ports = set()
-        for ovsrec_bridge in list(ovsrec_bridges.rows.values()):
+        for ovsrec_bridge in ovsrec_bridges.rows.values():
             name = ovsrec_bridge.name
             if name in bridges:
                 LOG.warn('%s: database contains duplicate bridge name', name)
@@ -304,7 +304,7 @@ class VSCtlContext(object):
                                              ovsrec_port.tag)
 
         bridges = set()
-        for ovsrec_bridge in list(ovsrec_bridges.rows.values()):
+        for ovsrec_bridge in ovsrec_bridges.rows.values():
             name = ovsrec_bridge.name
             if name in bridges:
                 continue
@@ -381,7 +381,7 @@ class VSCtlContext(object):
 
     def find_bridge_by_id(self, datapath_id, must_exist):
         assert self.cache_valid
-        for vsctl_bridge in list(self.bridges.values()):
+        for vsctl_bridge in self.bridges.values():
             if vsctl_bridge.br_cfg.datapath_id[0].strip('"') == datapath_id:
                 self.verify_bridges()
                 return vsctl_bridge
@@ -626,7 +626,7 @@ class VSCtlContext(object):
         else:
             key = None
         if value is not None:
-            LOG.debug("columns %s", list(table_schema.columns.keys()))
+            LOG.debug("columns %s", table_schema.columns.keys())
             type_ = table_schema.columns[column].type
             value = datum_from_string(type_, value)
             LOG.debug("column %s value %s", column, value)
@@ -662,16 +662,16 @@ class VSCtlContext(object):
         if not vsctl_row_id.name_column:
             if record_id != '.':
                 return None
-            values = list(self.idl.tables[vsctl_row_id.table].rows.values())
+            values = self.idl.tables[vsctl_row_id.table].rows.values()
             if not values or len(values) > 2:
                 return None
             referrer = values[0]
         else:
             referrer = None
-            for ovsrec_row in list(self.idl.tables[
-                    vsctl_row_id.table].rows.values()):
+            for ovsrec_row in self.idl.tables[
+                    vsctl_row_id.table].rows.values():
                 name = getattr(ovsrec_row, vsctl_row_id.name_column)
-                assert type(name) in (list, str, str)
+                assert type(name) in (list, str, unicode)
                 if type(name) != list and name == record_id:
                     if (referrer):
                         vsctl_fatal('multiple rows in %s match "%s"' %
@@ -845,7 +845,7 @@ class VSCtl(object):
         txn.add_comment('ovs-vsctl')  # TODO:XXX add operation name. args
         ovs_rows = idl_.tables[vswitch_idl.OVSREC_TABLE_OPEN_VSWITCH].rows
         if ovs_rows:
-            ovs_ = list(ovs_rows.values())[0]
+            ovs_ = ovs_rows.values()[0]
         else:
             # XXX add verification that table is empty
             ovs_ = txn.insert(
@@ -1106,8 +1106,8 @@ class VSCtl(object):
         return output
 
     def _cmd_show(self, ctx, command):
-        for row in list(ctx.idl.tables[
-                self._CMD_SHOW_TABLES[0].table].rows.values()):
+        for row in ctx.idl.tables[
+                self._CMD_SHOW_TABLES[0].table].rows.values():
             output = self._cmd_show_row(ctx, row, 0)
             command.result = output
 
@@ -1496,7 +1496,7 @@ class VSCtl(object):
         best_match = None
         best_score = 0
 
-        columns = list(self.schema.tables[table_name].columns.keys())
+        columns = self.schema.tables[table_name].columns.keys()
         for column in columns:
             score = VSCtl._score_partial_match(column, column_name)
             if score > best_score:
@@ -1602,7 +1602,7 @@ class VSCtl(object):
 
     def _find(self, ctx, table_name, column_key_values):
         result = []
-        for ovsrec_row in list(ctx.idl.tables[table_name].rows.values()):
+        for ovsrec_row in ctx.idl.tables[table_name].rows.values():
             LOG.debug('ovsrec_row %s', ovsrec_row_to_string(ovsrec_row))
             if all(self._check_value(ovsrec_row, column_key_value)
                    for column_key_value in column_key_values):
@@ -1702,27 +1702,27 @@ def schema_print(schema_location, prefix):
     json = ovs.json.from_file(schema_location)
     schema = ovs.db.schema.DbSchema.from_json(json)
 
-    print('# Do NOT edit.')
-    print('# This is automatically generated.')
-    print('# created based on version %s' % (schema.version or 'unknown'))
-    print('')
-    print('')
-    print('%s_DB_NAME = \'%s\'' % (prefix, schema.name))
-    for table in sorted(list(schema.tables.values()),
+    print '# Do NOT edit.'
+    print '# This is automatically generated.'
+    print '# created based on version %s' % (schema.version or 'unknown')
+    print ''
+    print ''
+    print '%s_DB_NAME = \'%s\'' % (prefix, schema.name)
+    for table in sorted(schema.tables.values(),
                         key=operator.attrgetter('name')):
-        print('')
-        print('%s_TABLE_%s = \'%s\'' % (prefix,
-                                        table.name.upper(), table.name))
-        for column in sorted(list(table.columns.values()),
+        print ''
+        print '%s_TABLE_%s = \'%s\'' % (prefix,
+                                        table.name.upper(), table.name)
+        for column in sorted(table.columns.values(),
                              key=operator.attrgetter('name')):
-            print('%s_%s_COL_%s = \'%s\'' % (prefix, table.name.upper(),
+            print '%s_%s_COL_%s = \'%s\'' % (prefix, table.name.upper(),
                                              column.name.upper(),
-                                             column.name))
+                                             column.name)
 
 
 def main():
     if len(sys.argv) <= 2:
-        print('Usage: %s <schema file> <prefix>' % sys.argv[0])
+        print 'Usage: %s <schema file> <prefix>' % sys.argv[0]
 
     location = sys.argv[1]
     prefix = sys.argv[2]

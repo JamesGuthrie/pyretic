@@ -30,7 +30,7 @@ from struct import unpack
 
 class Test_Parser_Compat(unittest.TestCase):
     def __init__(self, methodName):
-        print('init', methodName)
+        print 'init', methodName
         super(Test_Parser_Compat, self).__init__(methodName)
 
     def setUp(self):
@@ -130,7 +130,7 @@ class Test_Parser_Compat(unittest.TestCase):
         # a parsed object can be inspected by old and new api
 
         check(ofpp.OFPMatch.parser(buffer(new_buf), 0))
-        check(ofpp.OFPMatch.from_jsondict(list(new_jsondict.values())[0]))
+        check(ofpp.OFPMatch.from_jsondict(new_jsondict.values()[0]))
 
 
 def _add_tests():
@@ -144,12 +144,12 @@ def _add_tests():
                         method_name = 'test_' + mod + '_ofpmatch_compat'
 
                         def _run(self, name, ofpp):
-                            print(('processing %s ...' % name))
+                            print ('processing %s ...' % name)
                             self._test(name, ofpp)
-                        print(('adding %s ...' % method_name))
+                        print ('adding %s ...' % method_name)
                         f = functools.partial(_run, name=method_name,
                                               ofpp=ofpp)
-                        f.__name__ = method_name
+                        f.func_name = method_name
                         f.__name__ = method_name
                         cls = Test_Parser_Compat
                         im = new.instancemethod(f, None, cls)

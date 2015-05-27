@@ -26,7 +26,7 @@
 
 import itertools
 import struct
-from .ofproto_parser import msg_pack_into
+from ofproto_parser import msg_pack_into
 
 from ryu.lib import addrconv
 
@@ -41,7 +41,7 @@ class IntDescr(TypeDescr):
 
     def to_user(self, bin):
         i = 0
-        for x in range(self.size):
+        for x in xrange(self.size):
             c = bin[:1]
             i = i * 256 + ord(c)
             bin = bin[1:]
@@ -49,7 +49,7 @@ class IntDescr(TypeDescr):
 
     def from_user(self, i):
         bin = ''
-        for x in range(self.size):
+        for x in xrange(self.size):
             bin = chr(i & 255) + bin
             i /= 256
         return bin
@@ -179,7 +179,7 @@ def normalize_user(mod, k, uv):
     # apply mask
     if not m is None:
         v = ''.join(chr(ord(x) & ord(y)) for (x, y)
-            in zip(v, m))
+            in itertools.izip(v, m))
     (k2, uv2) = mod.oxm_to_user(n, v, m)
     assert k2 == k
     return (k2, uv2)
