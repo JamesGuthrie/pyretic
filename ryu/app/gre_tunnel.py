@@ -18,6 +18,11 @@
 # Despite of the name, this module isn't GRE specific and
 # should work for VXLAN etc as well.
 
+"""
+Flow table updater for OpenStack integration. Despite of the name, this
+isn't GRE specific.
+"""
+
 import collections
 
 from ryu import exception as ryu_exc
@@ -399,6 +404,16 @@ class GRETunnel(app_manager.RyuApp):
         map(lambda ev_cls: self.port_set.register_observer(ev_cls, self.name),
             [dpset.EventDP, PortSet.EventTunnelKeyDel, PortSet.EventVMPort,
              PortSet.EventTunnelPort, ofp_event.EventOFPPacketIn])
+
+    def start(self):
+        super(GRETunnel, self).start()
+        self.port_set.start()
+
+    def stop(self):
+        app_mgr = app_manager.get_instance()
+        app_mgr.uninstantiate(self.port_set)
+        self.port_set = None
+        super(GRETunnel, self).stop()
 
     # TODO: track active vm/tunnel ports
 

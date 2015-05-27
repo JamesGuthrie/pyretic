@@ -1,7 +1,5 @@
-#!/usr/bin/env python
-#
-# Copyright (C) 2013 Nippon Telegraph and Telephone Corporation.
-# Copyright (C) 2013 YAMAMOTO Takashi <yamamoto at valinux co jp>
+# Copyright (C) 2013,2014,2015 Nippon Telegraph and Telephone Corporation.
+# Copyright (C) 2013,2014,2015 YAMAMOTO Takashi <yamamoto at valinux co jp>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,12 +19,13 @@ import unittest
 from nose.tools import eq_
 
 from ryu.ofproto import ofproto_parser
+from ryu.ofproto import ofproto_protocol
 from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import ofproto_v1_2
 from ryu.ofproto import ofproto_v1_3
-from ryu.ofproto import ofproto_v1_0_parser
-from ryu.ofproto import ofproto_v1_2_parser
-from ryu.ofproto import ofproto_v1_3_parser
+from ryu.ofproto import ofproto_v1_4
+from ryu.ofproto import ofproto_v1_5
+from ryu.tests import test_lib
 import json
 
 
@@ -88,31 +87,75 @@ implemented = {
         ofproto_v1_3.OFPT_GET_ASYNC_REPLY: (True, False),
         ofproto_v1_3.OFPT_SET_ASYNC: (False, True),
     },
+    5: {
+        ofproto_v1_4.OFPT_HELLO: (True, False),
+        ofproto_v1_4.OFPT_FEATURES_REQUEST: (False, True),
+        ofproto_v1_4.OFPT_FEATURES_REPLY: (True, False),
+        ofproto_v1_4.OFPT_GET_CONFIG_REQUEST: (False, True),
+        ofproto_v1_4.OFPT_GET_CONFIG_REPLY: (True, False),
+        ofproto_v1_4.OFPT_SET_CONFIG: (False, True),
+        ofproto_v1_4.OFPT_PACKET_IN: (True, False),
+        ofproto_v1_4.OFPT_FLOW_REMOVED: (True, False),
+        ofproto_v1_4.OFPT_PORT_STATUS: (True, False),
+        ofproto_v1_4.OFPT_PACKET_OUT: (False, True),
+        ofproto_v1_4.OFPT_FLOW_MOD: (False, True),
+        ofproto_v1_4.OFPT_GROUP_MOD: (False, True),
+        ofproto_v1_4.OFPT_PORT_MOD: (False, True),
+        ofproto_v1_4.OFPT_METER_MOD: (False, True),
+        ofproto_v1_4.OFPT_TABLE_MOD: (False, True),
+        ofproto_v1_4.OFPT_MULTIPART_REQUEST: (False, True),
+        ofproto_v1_4.OFPT_MULTIPART_REPLY: (True, False),
+        ofproto_v1_4.OFPT_BARRIER_REQUEST: (False, True),
+        ofproto_v1_4.OFPT_ROLE_REQUEST: (False, True),
+        ofproto_v1_4.OFPT_ROLE_REPLY: (True, False),
+        ofproto_v1_4.OFPT_GET_ASYNC_REQUEST: (False, True),
+        ofproto_v1_4.OFPT_GET_ASYNC_REPLY: (True, False),
+        ofproto_v1_4.OFPT_SET_ASYNC: (False, True),
+        ofproto_v1_4.OFPT_ROLE_STATUS: (True, False),
+        ofproto_v1_4.OFPT_TABLE_STATUS: (True, False),
+        ofproto_v1_4.OFPT_REQUESTFORWARD: (False, True),
+        ofproto_v1_4.OFPT_BUNDLE_CONTROL: (False, True),
+        ofproto_v1_4.OFPT_BUNDLE_ADD_MESSAGE: (False, True),
+    },
+    6: {
+        ofproto_v1_5.OFPT_HELLO: (True, False),
+        ofproto_v1_5.OFPT_FEATURES_REQUEST: (False, True),
+        ofproto_v1_5.OFPT_FEATURES_REPLY: (True, False),
+        ofproto_v1_5.OFPT_GET_CONFIG_REQUEST: (False, True),
+        ofproto_v1_5.OFPT_GET_CONFIG_REPLY: (True, False),
+        ofproto_v1_5.OFPT_SET_CONFIG: (False, True),
+        ofproto_v1_5.OFPT_PACKET_IN: (True, False),
+        ofproto_v1_5.OFPT_FLOW_REMOVED: (True, False),
+        ofproto_v1_5.OFPT_PORT_STATUS: (True, False),
+        ofproto_v1_5.OFPT_PACKET_OUT: (False, True),
+        ofproto_v1_5.OFPT_FLOW_MOD: (False, True),
+        ofproto_v1_5.OFPT_GROUP_MOD: (False, True),
+        ofproto_v1_5.OFPT_PORT_MOD: (False, True),
+        ofproto_v1_5.OFPT_METER_MOD: (False, True),
+        ofproto_v1_5.OFPT_TABLE_MOD: (False, True),
+        ofproto_v1_5.OFPT_MULTIPART_REQUEST: (False, True),
+        ofproto_v1_5.OFPT_MULTIPART_REPLY: (True, False),
+        ofproto_v1_5.OFPT_BARRIER_REQUEST: (False, True),
+        ofproto_v1_5.OFPT_ROLE_REQUEST: (False, True),
+        ofproto_v1_5.OFPT_ROLE_REPLY: (True, False),
+        ofproto_v1_5.OFPT_GET_ASYNC_REQUEST: (False, True),
+        ofproto_v1_5.OFPT_GET_ASYNC_REPLY: (True, False),
+        ofproto_v1_5.OFPT_SET_ASYNC: (False, True),
+        ofproto_v1_5.OFPT_ROLE_STATUS: (True, False),
+        ofproto_v1_5.OFPT_TABLE_STATUS: (True, False),
+        ofproto_v1_5.OFPT_REQUESTFORWARD: (False, True),
+        ofproto_v1_5.OFPT_BUNDLE_CONTROL: (True, True),
+        ofproto_v1_5.OFPT_BUNDLE_ADD_MESSAGE: (False, True),
+    },
 }
-
-
-# XXX dummy dp for testing
-class DummyDatapath(object):
-    def __init__(self, ofp, ofpp):
-        self.ofproto = ofp
-        self.ofproto_parser = ofpp
 
 
 class Test_Parser(unittest.TestCase):
     """ Test case for ryu.ofproto, especially json representation
     """
 
-    _ofp_versions = {
-        ofproto_v1_0.OFP_VERSION: (ofproto_v1_0,
-                                   ofproto_v1_0_parser),
-        ofproto_v1_2.OFP_VERSION: (ofproto_v1_2,
-                                   ofproto_v1_2_parser),
-        ofproto_v1_3.OFP_VERSION: (ofproto_v1_3,
-                                   ofproto_v1_3_parser),
-    }
-
     def __init__(self, methodName):
-        print 'init', methodName
+        print('init %s' % methodName)
         super(Test_Parser, self).__init__(methodName)
 
     def setUp(self):
@@ -139,7 +182,7 @@ class Test_Parser(unittest.TestCase):
             has_parser = True
             has_serializer = True
 
-        dp = DummyDatapath(*self._ofp_versions[version])
+        dp = ofproto_protocol.ProtocolDesc(version=version)
         if has_parser:
             msg = ofproto_parser.msg(dp, version, msg_type, msg_len, xid,
                                      wire_msg)
@@ -181,20 +224,25 @@ class Test_Parser(unittest.TestCase):
 
 def _add_tests():
     import os
+    import os.path
     import fnmatch
-    import new
     import functools
 
-    packet_data_dir = '../packet_data'
-    json_dir = './ofproto/json'
+    this_dir = os.path.dirname(sys.modules[__name__].__file__)
+    packet_data_dir = os.path.join(this_dir, '../../packet_data')
+    json_dir = os.path.join(this_dir, 'json')
     ofvers = [
         'of10',
         'of12',
         'of13',
+        'of14',
+        'of15',
     ]
+    cases = set()
     for ver in ofvers:
         pdir = packet_data_dir + '/' + ver
         jdir = json_dir + '/' + ver
+        n_added = 0
         for file in os.listdir(pdir):
             if not fnmatch.fnmatch(file, '*.packet'):
                 continue
@@ -203,14 +251,16 @@ def _add_tests():
             method_name = ('test_' + file).replace('-', '_').replace('.', '_')
 
             def _run(self, name, wire_msg, json_str):
-                print ('processing %s ...' % name)
+                print('processing %s ...' % name)
                 self._test_msg(name, wire_msg, json_str)
-            print ('adding %s ...' % method_name)
+            print('adding %s ...' % method_name)
             f = functools.partial(_run, name=method_name, wire_msg=wire_msg,
                                   json_str=json_str)
-            f.func_name = method_name
-            f.__name__ = method_name
-            im = new.instancemethod(f, None, Test_Parser)
-            setattr(Test_Parser, method_name, im)
+            test_lib.add_method(Test_Parser, method_name, f)
+            cases.add(method_name)
+            n_added += 1
+        assert n_added > 0
+    assert (cases ==
+            set(unittest.defaultTestLoader.getTestCaseNames(Test_Parser)))
 
 _add_tests()

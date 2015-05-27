@@ -673,7 +673,7 @@ class Test_sctp(unittest.TestCase):
         eq_(self.dst_port, res[1])
         eq_(self.vtag, res[2])
         # skip compare checksum
-        #eq_(self.csum, res[3])
+        # eq_(self.csum, res[3])
 
         return buf[sctp.sctp._MIN_LEN:]
 
@@ -1227,7 +1227,7 @@ class Test_sctp(unittest.TestCase):
                                 ether.ETH_TYPE_IP)
         ip4 = ipv4.ipv4(4, 5, 16, 0, 0, 2, 0, 64, inet.IPPROTO_SCTP, 0,
                         '192.168.1.1', '10.144.1.1')
-        pkt = eth/ip4/self.sc
+        pkt = eth / ip4 / self.sc
 
         eth = pkt.get_protocol(ethernet.ethernet)
         ok_(eth)
@@ -1382,3 +1382,72 @@ class Test_sctp(unittest.TestCase):
     def test_to_string_with_multi_chunks(self):
         self.setUp_with_multi_chunks()
         self.test_to_string()
+
+    def test_json(self):
+        jsondict = self.sc.to_jsondict()
+        sc = sctp.sctp.from_jsondict(jsondict['sctp'])
+        eq_(str(self.sc), str(sc))
+
+    def test_json_with_data(self):
+        self.setUp_with_data()
+        self.test_json()
+
+    def test_json_with_init(self):
+        self.setUp_with_init()
+        self.test_json()
+
+    def test_json_with_init_ack(self):
+        self.setUp_with_init_ack()
+        self.test_json()
+
+    def test_json_with_sack(self):
+        self.setUp_with_sack()
+        self.test_json()
+
+    def test_json_with_heartbeat(self):
+        self.setUp_with_heartbeat()
+        self.test_json()
+
+    def test_json_with_heartbeat_ack(self):
+        self.setUp_with_heartbeat_ack()
+        self.test_json()
+
+    def test_json_with_abort(self):
+        self.setUp_with_abort()
+        self.test_json()
+
+    def test_json_with_shutdown(self):
+        self.setUp_with_shutdown()
+        self.test_json()
+
+    def test_json_with_shutdown_ack(self):
+        self.setUp_with_shutdown_ack()
+        self.test_json()
+
+    def test_json_with_error(self):
+        self.setUp_with_error()
+        self.test_json()
+
+    def test_json_with_cookie_echo(self):
+        self.setUp_with_cookie_echo()
+        self.test_json()
+
+    def test_json_with_cookie_ack(self):
+        self.setUp_with_cookie_ack()
+        self.test_json()
+
+    def test_json_with_ecn_echo(self):
+        self.setUp_with_ecn_echo()
+        self.test_json()
+
+    def test_json_with_cwr(self):
+        self.setUp_with_cwr()
+        self.test_json()
+
+    def test_json_with_shutdown_complete(self):
+        self.setUp_with_shutdown_complete()
+        self.test_json()
+
+    def test_json_with_multi_chunks(self):
+        self.setUp_with_multi_chunks()
+        self.test_json()

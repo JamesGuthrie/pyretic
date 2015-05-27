@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import abc
+import six
 import struct
 from . import packet_base
 from . import arp
@@ -23,12 +24,12 @@ from . import lldp
 from . import slow
 from . import llc
 from . import pbb
-from ryu.ofproto import ether
+from . import cfm
+from . import ether_types as ether
 
 
+@six.add_metaclass(abc.ABCMeta)
 class _vlan(packet_base.PacketBase):
-
-    __metaclass__ = abc.ABCMeta
     _PACK_STR = "!HH"
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
@@ -95,6 +96,8 @@ class svlan(_vlan):
     Most of them are same to the on-wire counterparts but in host byte order.
     __init__ takes the corresponding args in this order.
 
+    .. tabularcolumns:: |l|L|
+
     ============== ====================
     Attribute      Description
     ============== ====================
@@ -121,6 +124,7 @@ vlan.register_packet_type(ipv6.ipv6, ether.ETH_TYPE_IPV6)
 vlan.register_packet_type(lldp.lldp, ether.ETH_TYPE_LLDP)
 vlan.register_packet_type(slow.slow, ether.ETH_TYPE_SLOW)
 vlan.register_packet_type(llc.llc, ether.ETH_TYPE_IEEE802_3)
+vlan.register_packet_type(cfm.cfm, ether.ETH_TYPE_CFM)
 
 svlan.register_packet_type(vlan, ether.ETH_TYPE_8021Q)
 svlan.register_packet_type(pbb.itag, ether.ETH_TYPE_8021AH)

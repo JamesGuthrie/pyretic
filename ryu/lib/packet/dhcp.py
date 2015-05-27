@@ -139,6 +139,12 @@ class dhcp(packet_base.PacketBase):
     _DHCP_PACK_STR = '!BBBBIHH4s4s4s4s16s64s128s'
     _DHCP_CHADDR_LEN = 16
     _HARDWARE_TYPE_ETHERNET = 1
+    _class_prefixes = ['options']
+    _TYPE = {
+        'ascii': [
+            'ciaddr', 'yiaddr', 'siaddr', 'giaddr', 'chaddr', 'sname'
+        ]
+    }
 
     def __init__(self, op, chaddr, options, htype=_HARDWARE_TYPE_ETHERNET,
                  hlen=0, hops=0, xid=None, secs=0, flags=0,
@@ -148,7 +154,7 @@ class dhcp(packet_base.PacketBase):
         self.op = op
         self.htype = htype
         if hlen == 0:
-            self.hlen = len(chaddr)
+            self.hlen = len(addrconv.mac.text_to_bin(chaddr))
         else:
             self.hlen = hlen
         self.hops = hops
@@ -168,7 +174,7 @@ class dhcp(packet_base.PacketBase):
         self.options = options
 
     @classmethod
-    def parser(cls, buf):
+    def _parser(cls, buf):
         (op, htype, hlen) = struct.unpack_from(cls._HLEN_UNPACK_STR, buf)
         buf = buf[cls._HLEN_UNPACK_LEN:]
         unpack_str = cls._DHCP_UNPACK_STR % (hlen,
@@ -188,6 +194,13 @@ class dhcp(packet_base.PacketBase):
                     addrconv.ipv4.bin_to_text(siaddr),
                     addrconv.ipv4.bin_to_text(giaddr), sname, boot_file),
                 None, buf[length:])
+
+    @classmethod
+    def parser(cls, buf):
+        try:
+            return cls._parser(buf)
+        except:
+            return None, None, buf
 
     def serialize(self, payload, prev):
         seri_opt = self.options.serialize()
@@ -230,6 +243,12 @@ class options(stringify.StringifyMixin):
     # same magic cookie as is defined in RFC 1497
     _MAGIC_COOKIE = '99.130.83.99'
     _OPT_TAG_LEN_BYTE = 2
+    _class_prefixes = ['option']
+    _TYPE = {
+        'ascii': [
+            'magic_cookie'
+        ]
+    }
 
     def __init__(self, option_list=None, options_len=0,
                  magic_cookie=_MAGIC_COOKIE):

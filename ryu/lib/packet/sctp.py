@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import abc
+import six
 import struct
 
 from ryu.lib import addrconv
@@ -98,7 +99,7 @@ class sctp(packet_base.PacketBase):
             return cls
         return _register_chunk_type(args[0])
 
-    def __init__(self, src_port=0, dst_port=0, vtag=0, csum=0, chunks=None):
+    def __init__(self, src_port=1, dst_port=1, vtag=0, csum=0, chunks=None):
         super(sctp, self).__init__()
         self.src_port = src_port
         self.dst_port = dst_port
@@ -222,14 +223,13 @@ class sctp(packet_base.PacketBase):
         return struct.unpack(">I", struct.pack("<I", crc32))[0]
 
 
-#=======================================================================
+# =======================================================================
 #
 # Chunk Types
 #
-#=======================================================================
+# =======================================================================
+@six.add_metaclass(abc.ABCMeta)
 class chunk(stringify.StringifyMixin):
-
-    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!BBH'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
@@ -252,11 +252,11 @@ class chunk(stringify.StringifyMixin):
         return self.length
 
 
+@six.add_metaclass(abc.ABCMeta)
 class chunk_init_base(chunk):
-
-    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!BBHIIHHI'
     _MIN_LEN = struct.calcsize(_PACK_STR)
+    _class_prefixes = ['param_']
 
     def __init__(self, flags=0, length=0, init_tag=0, a_rwnd=0, os=0,
                  mis=0, i_tsn=0, params=None):
@@ -303,9 +303,9 @@ class chunk_init_base(chunk):
         return str(buf)
 
 
+@six.add_metaclass(abc.ABCMeta)
 class chunk_heartbeat_base(chunk):
-
-    __metaclass__ = abc.ABCMeta
+    _class_prefixes = ['param_']
 
     def __init__(self, flags=0, length=0, info=None):
         super(chunk_heartbeat_base, self).__init__(
@@ -336,10 +336,8 @@ class chunk_heartbeat_base(chunk):
         return str(buf)
 
 
+@six.add_metaclass(abc.ABCMeta)
 class chunk_ack_base(chunk):
-
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, flags=0, length=0):
         super(chunk_ack_base, self).__init__(self.chunk_type(), length)
         self.flags = flags
@@ -358,9 +356,8 @@ class chunk_ack_base(chunk):
         return buf
 
 
+@six.add_metaclass(abc.ABCMeta)
 class chunk_ecn_base(chunk):
-
-    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!BBHI'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
@@ -1169,14 +1166,13 @@ class chunk_shutdown_complete(chunk):
         return buf
 
 
-#=======================================================================
+# =======================================================================
 #
 # Cause Code
 #
-#=======================================================================
+# =======================================================================
+@six.add_metaclass(abc.ABCMeta)
 class cause(stringify.StringifyMixin):
-
-    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!HH'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 
@@ -1208,10 +1204,8 @@ class cause(stringify.StringifyMixin):
         return length
 
 
+@six.add_metaclass(abc.ABCMeta)
 class cause_with_value(cause):
-
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, value=None, length=0):
         super(cause_with_value, self).__init__(length)
         self.value = value
@@ -1448,6 +1442,7 @@ class cause_unresolvable_addr(cause_with_value):
     ============== =====================================================
     """
 
+    _class_prefixes = ['param_']
     _RECOGNIZED_PARAMS = {}
 
     @staticmethod
@@ -1662,6 +1657,7 @@ class cause_restart_with_new_addr(cause_with_value):
     ============== =====================================================
     """
 
+    _class_prefixes = ['param_']
     _RECOGNIZED_PARAMS = {}
 
     @staticmethod
@@ -1768,14 +1764,13 @@ class cause_protocol_violation(cause_with_value):
         return CCODE_PROTOCOL_VIOLATION
 
 
-#=======================================================================
+# =======================================================================
 #
 # Chunk Parameter Types
 #
-#=======================================================================
+# =======================================================================
+@six.add_metaclass(abc.ABCMeta)
 class param(stringify.StringifyMixin):
-
-    __metaclass__ = abc.ABCMeta
     _PACK_STR = '!HH'
     _MIN_LEN = struct.calcsize(_PACK_STR)
 

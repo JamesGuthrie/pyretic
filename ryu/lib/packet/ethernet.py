@@ -17,7 +17,7 @@ import struct
 from . import packet_base
 from . import vlan
 from . import mpls
-from ryu.ofproto import ether
+from . import ether_types as ether
 from ryu.lib import addrconv
 
 
@@ -39,6 +39,11 @@ class ethernet(packet_base.PacketBase):
 
     _PACK_STR = '!6s6sH'
     _MIN_LEN = struct.calcsize(_PACK_STR)
+    _TYPE = {
+        'ascii': [
+            'src', 'dst'
+        ]
+    }
 
     def __init__(self, dst='ff:ff:ff:ff:ff:ff', src='00:00:00:00:00:00',
                  ethertype=ether.ETH_TYPE_IP):

@@ -16,18 +16,20 @@
 
 import logging
 from abc import ABCMeta, abstractmethod
+import six
 
 from ryu.lib.packet import packet
 
 LOG = logging.getLogger(__name__)
 
 
-def packet_in_filter(cls, args=None):
+def packet_in_filter(cls, args=None, logging=False):
     def _packet_in_filter(packet_in_handler):
         def __packet_in_filter(self, ev):
             pkt = packet.Packet(ev.msg.data)
             if not packet_in_handler.pkt_in_filter.filter(pkt):
-                LOG.debug('The packet is discarded by %s: %s' % (cls, pkt))
+                if logging:
+                    LOG.debug('The packet is discarded by %s: %s', cls, pkt)
                 return
             return packet_in_handler(self, ev)
         pkt_in_filter = cls(args)
@@ -36,9 +38,8 @@ def packet_in_filter(cls, args=None):
     return _packet_in_filter
 
 
+@six.add_metaclass(ABCMeta)
 class PacketInFilterBase(object):
-    __metaclass__ = ABCMeta
-
     def __init__(self, args):
         self.args = args
 

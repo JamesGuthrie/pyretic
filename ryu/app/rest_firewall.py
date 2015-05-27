@@ -31,24 +31,28 @@ from ryu.lib import mac
 from ryu.lib import dpid as dpid_lib
 from ryu.lib import ofctl_v1_0
 from ryu.lib import ofctl_v1_2
+from ryu.lib import ofctl_v1_3
 from ryu.lib.packet import packet
 from ryu.ofproto import ether
 from ryu.ofproto import inet
 from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import ofproto_v1_2
 from ryu.ofproto import ofproto_v1_2_parser
+from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ofproto_v1_3_parser
 
 
-#=============================
+# =============================
 #          REST API
-#=============================
+# =============================
 #
 #  Note: specify switch and vlan group, as follows.
 #   {switch-id} : 'all' or switchID
 #   {vlan-id}   : 'all' or vlanID
 #
 #
-## about Firewall status
+
+# about Firewall status
 #
 # get status of all firewall switches
 # GET /firewall/module/status
@@ -59,8 +63,8 @@ from ryu.ofproto import ofproto_v1_2_parser
 # set disable the firewall switches
 # PUT /firewall/module/disable/{switch-id}
 #
-#
-## about Firewall logs
+
+# about Firewall logs
 #
 # get log status of all firewall switches
 # GET /firewall/log/status
@@ -71,8 +75,8 @@ from ryu.ofproto import ofproto_v1_2_parser
 # set log disable the firewall switches
 # PUT /firewall/log/disable/{switch-id}
 #
-#
-## about Firewall rules
+
+# about Firewall rules
 #
 # get rules of the firewall switches
 # * for no vlan
@@ -97,10 +101,12 @@ from ryu.ofproto import ofproto_v1_2_parser
 #    "in_port" : "<int>"
 #    "dl_src"  : "<xx:xx:xx:xx:xx:xx>"
 #    "dl_dst"  : "<xx:xx:xx:xx:xx:xx>"
-#    "dl_type" : "<ARP or IPv4>"
+#    "dl_type" : "<ARP or IPv4 or IPv6>"
 #    "nw_src"  : "<A.B.C.D/M>"
 #    "nw_dst"  : "<A.B.C.D/M>"
-#    "nw_proto": "<TCP or UDP or ICMP>"
+#    "ipv6_src": "<xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx/M>"
+#    "ipv6_dst": "<xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx/M>"
+#    "nw_proto": "<TCP or UDP or ICMP or ICMPv6>"
 #    "tp_src"  : "<int>"
 #    "tp_dst"  : "<int>"
 #    "actions" : "<ALLOW or DENY>"
@@ -108,6 +114,10 @@ from ryu.ofproto import ofproto_v1_2_parser
 #   Note: specifying nw_src/nw_dst
 #         without specifying dl-type as "ARP" or "IPv4"
 #         will automatically set dl-type as "IPv4".
+#
+#   Note: specifying ipv6_src/ipv6_dst
+#         without specifying dl-type as "IPv6"
+#         will automatically set dl-type as "IPv6".
 #
 #   Note: When "priority" has not been set up,
 #         "0" is set to "priority".
@@ -154,13 +164,17 @@ REST_DST_MAC = 'dl_dst'
 REST_DL_TYPE = 'dl_type'
 REST_DL_TYPE_ARP = 'ARP'
 REST_DL_TYPE_IPV4 = 'IPv4'
+REST_DL_TYPE_IPV6 = 'IPv6'
 REST_DL_VLAN = 'dl_vlan'
 REST_SRC_IP = 'nw_src'
 REST_DST_IP = 'nw_dst'
+REST_SRC_IPV6 = 'ipv6_src'
+REST_DST_IPV6 = 'ipv6_dst'
 REST_NW_PROTO = 'nw_proto'
 REST_NW_PROTO_TCP = 'TCP'
 REST_NW_PROTO_UDP = 'UDP'
 REST_NW_PROTO_ICMP = 'ICMP'
+REST_NW_PROTO_ICMPV6 = 'ICMPv6'
 REST_TP_SRC = 'tp_src'
 REST_TP_DST = 'tp_dst'
 REST_ACTION = 'actions'
@@ -169,11 +183,11 @@ REST_ACTION_DENY = 'DENY'
 REST_ACTION_PACKETIN = 'PACKETIN'
 
 
-STATUS_FLOW_PRIORITY = ofproto_v1_2_parser.UINT16_MAX
-ARP_FLOW_PRIORITY = ofproto_v1_2_parser.UINT16_MAX - 1
+STATUS_FLOW_PRIORITY = ofproto_v1_3_parser.UINT16_MAX
+ARP_FLOW_PRIORITY = ofproto_v1_3_parser.UINT16_MAX - 1
 LOG_FLOW_PRIORITY = 0
 ACL_FLOW_PRIORITY_MIN = LOG_FLOW_PRIORITY + 1
-ACL_FLOW_PRIORITY_MAX = ofproto_v1_2_parser.UINT16_MAX - 2
+ACL_FLOW_PRIORITY_MAX = ofproto_v1_3_parser.UINT16_MAX - 2
 
 VLANID_NONE = 0
 VLANID_MIN = 2
@@ -184,7 +198,8 @@ COOKIE_SHIFT_VLANID = 32
 class RestFirewallAPI(app_manager.RyuApp):
 
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
-                    ofproto_v1_2.OFP_VERSION]
+                    ofproto_v1_2.OFP_VERSION,
+                    ofproto_v1_3.OFP_VERSION]
 
     _CONTEXTS = {'dpset': dpset.DPSet,
                  'wsgi': WSGIApplication}
@@ -289,7 +304,14 @@ class RestFirewallAPI(app_manager.RyuApp):
         lock, msgs = self.waiters[dp.id][msg.xid]
         msgs.append(msg)
 
-        if msg.flags & dp.ofproto.OFPSF_REPLY_MORE:
+        flags = 0
+        if dp.ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION or \
+                dp.ofproto.OFP_VERSION == ofproto_v1_2.OFP_VERSION:
+            flags = dp.ofproto.OFPSF_REPLY_MORE
+        elif dp.ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
+            flags = dp.ofproto.OFPMPF_REPLY_MORE
+
+        if msg.flags & flags:
             return
         del self.waiters[dp.id][msg.xid]
         lock.set()
@@ -306,7 +328,7 @@ class RestFirewallAPI(app_manager.RyuApp):
     def stats_reply_handler_v1_0(self, ev):
         self.stats_reply_handler(ev)
 
-    # for OpenFlow version1.2
+    # for OpenFlow version1.2 or later
     @set_ev_cls(ofp_event.EventOFPStatsReply, MAIN_DISPATCHER)
     def stats_reply_handler_v1_2(self, ev):
         self.stats_reply_handler(ev)
@@ -366,7 +388,7 @@ class FirewallController(ControllerBase):
         dpid_str = dpid_lib.dpid_to_str(dp.id)
         try:
             f_ofs = Firewall(dp)
-        except OFPUnknownVersion, message:
+        except OFPUnknownVersion as message:
             FirewallController._LOGGER.info('dpid=%s: %s',
                                             dpid_str, message)
             return
@@ -406,16 +428,18 @@ class FirewallController(ControllerBase):
 
     # PUT /firewall/log/enable/{switchid}
     def set_log_enable(self, dummy, switchid, **_kwargs):
-        return self._access_module(switchid, 'set_log_enable')
+        return self._access_module(switchid, 'set_log_enable',
+                                   waiters=self.waiters)
 
     # PUT /firewall/log/disable/{switchid}
     def set_log_disable(self, dummy, switchid, **_kwargs):
-        return self._access_module(switchid, 'set_log_disable')
+        return self._access_module(switchid, 'set_log_disable',
+                                   waiters=self.waiters)
 
     def _access_module(self, switchid, func, waiters=None):
         try:
             dps = self._OFS_LIST.get_ofs(switchid)
-        except ValueError, message:
+        except ValueError as message:
             return Response(status=400, body=str(message))
 
         msgs = []
@@ -455,7 +479,7 @@ class FirewallController(ControllerBase):
         try:
             dps = self._OFS_LIST.get_ofs(switchid)
             vid = FirewallController._conv_toint_vlanid(vlan_id)
-        except ValueError, message:
+        except ValueError as message:
             return Response(status=400, body=str(message))
 
         msgs = []
@@ -468,7 +492,7 @@ class FirewallController(ControllerBase):
 
     def _set_rule(self, req, switchid, vlan_id=VLANID_NONE):
         try:
-            rule = eval(req.body)
+            rule = json.loads(req.body)
         except SyntaxError:
             FirewallController._LOGGER.debug('invalid syntax %s', req.body)
             return Response(status=400)
@@ -476,15 +500,15 @@ class FirewallController(ControllerBase):
         try:
             dps = self._OFS_LIST.get_ofs(switchid)
             vid = FirewallController._conv_toint_vlanid(vlan_id)
-        except ValueError, message:
+        except ValueError as message:
             return Response(status=400, body=str(message))
 
         msgs = []
         for f_ofs in dps.values():
             try:
-                msg = f_ofs.set_rule(rule, vid)
+                msg = f_ofs.set_rule(rule, self.waiters, vid)
                 msgs.append(msg)
-            except ValueError, message:
+            except ValueError as message:
                 return Response(status=400, body=str(message))
 
         body = json.dumps(msgs)
@@ -492,7 +516,7 @@ class FirewallController(ControllerBase):
 
     def _delete_rule(self, req, switchid, vlan_id=VLANID_NONE):
         try:
-            ruleid = eval(req.body)
+            ruleid = json.loads(req.body)
         except SyntaxError:
             FirewallController._LOGGER.debug('invalid syntax %s', req.body)
             return Response(status=400)
@@ -500,7 +524,7 @@ class FirewallController(ControllerBase):
         try:
             dps = self._OFS_LIST.get_ofs(switchid)
             vid = FirewallController._conv_toint_vlanid(vlan_id)
-        except ValueError, message:
+        except ValueError as message:
             return Response(status=400, body=str(message))
 
         msgs = []
@@ -508,7 +532,7 @@ class FirewallController(ControllerBase):
             try:
                 msg = f_ofs.delete_rule(ruleid, self.waiters, vid)
                 msgs.append(msg)
-            except ValueError, message:
+            except ValueError as message:
                 return Response(status=400, body=str(message))
 
         body = json.dumps(msgs)
@@ -536,7 +560,8 @@ class FirewallController(ControllerBase):
 class Firewall(object):
 
     _OFCTL = {ofproto_v1_0.OFP_VERSION: ofctl_v1_0,
-              ofproto_v1_2.OFP_VERSION: ofctl_v1_2}
+              ofproto_v1_2.OFP_VERSION: ofctl_v1_2,
+              ofproto_v1_3.OFP_VERSION: ofctl_v1_3}
 
     def __init__(self, dp):
         super(Firewall, self).__init__()
@@ -565,7 +590,7 @@ class Firewall(object):
         for vlan_id in vlan_ids:
             self.vlan_list.setdefault(vlan_id, 0)
             self.vlan_list[vlan_id] += 1
-            self.vlan_list[vlan_id] &= ofproto_v1_2_parser.UINT32_MAX
+            self.vlan_list[vlan_id] &= ofproto_v1_3_parser.UINT32_MAX
             cookie = (vlan_id << COOKIE_SHIFT_VLANID) + \
                 self.vlan_list[vlan_id]
             cookie_list.append([cookie, vlan_id])
@@ -574,7 +599,7 @@ class Firewall(object):
 
     @staticmethod
     def _cookie_to_ruleid(cookie):
-        return cookie & ofproto_v1_2_parser.UINT32_MAX
+        return cookie & ofproto_v1_3_parser.UINT32_MAX
 
     # REST command template
     def rest_command(func):
@@ -645,14 +670,14 @@ class Firewall(object):
         return REST_LOG_STATUS, status
 
     @rest_command
-    def set_log_disable(self):
-        return self._set_log_status(False)
+    def set_log_disable(self, waiters=None):
+        return self._set_log_status(False, waiters)
 
     @rest_command
-    def set_log_enable(self):
-        return self._set_log_status(True)
+    def set_log_enable(self, waiters=None):
+        return self._set_log_status(True, waiters)
 
-    def _set_log_status(self, is_enable):
+    def _set_log_status(self, is_enable, waiters):
         if is_enable:
             actions = Action.to_openflow(self.dp,
                                          {REST_ACTION: REST_ACTION_PACKETIN})
@@ -661,11 +686,32 @@ class Firewall(object):
             actions = []
             details = 'Log collection stopped.'
 
-        flow = self._to_of_flow(cookie=0, priority=LOG_FLOW_PRIORITY,
-                                match={}, actions=actions)
-
         cmd = self.dp.ofproto.OFPFC_ADD
-        self.ofctl.mod_flow_entry(self.dp, flow, cmd)
+
+        if waiters:
+            msgs = self.ofctl.get_flow_stats(self.dp, waiters)
+
+            if str(self.dp.id) in msgs:
+                flow_stats = msgs[str(self.dp.id)]
+                for flow_stat in flow_stats:
+                    priority = flow_stat[REST_PRIORITY]
+                    if (priority == STATUS_FLOW_PRIORITY
+                            or priority == ARP_FLOW_PRIORITY):
+                        continue
+                    action = flow_stat[REST_ACTION]
+                    if action == ['OUTPUT:%d' % self.dp.ofproto.OFPP_NORMAL]:
+                        continue
+
+                    cookie = flow_stat[REST_COOKIE]
+                    match = Match.to_mod_openflow(flow_stat[REST_MATCH])
+                    flow = self._to_of_flow(cookie=cookie, priority=priority,
+                                            match=match, actions=actions)
+                    self.ofctl.mod_flow_entry(self.dp, flow, cmd)
+        else:
+            # Initialize.
+            flow = self._to_of_flow(cookie=0, priority=LOG_FLOW_PRIORITY,
+                                    match={}, actions=actions)
+            self.ofctl.mod_flow_entry(self.dp, flow, cmd)
 
         msg = {'result': 'success',
                'details': details}
@@ -684,15 +730,15 @@ class Firewall(object):
         self.ofctl.mod_flow_entry(self.dp, flow, cmd)
 
     @rest_command
-    def set_rule(self, rest, vlan_id):
+    def set_rule(self, rest, waiters, vlan_id):
         msgs = []
         cookie_list = self._get_cookie(vlan_id)
         for cookie, vid in cookie_list:
-            msg = self._set_rule(cookie, rest, vid)
+            msg = self._set_rule(cookie, rest, waiters, vid)
             msgs.append(msg)
         return REST_COMMAND_RESULT, msgs
 
-    def _set_rule(self, cookie, rest, vlan_id):
+    def _set_rule(self, cookie, rest, waiters, vlan_id):
         priority = int(rest.get(REST_PRIORITY, ACL_FLOW_PRIORITY_MIN))
 
         if (priority < ACL_FLOW_PRIORITY_MIN
@@ -704,6 +750,10 @@ class Firewall(object):
             rest[REST_DL_VLAN] = vlan_id
 
         match = Match.to_openflow(rest)
+        if rest.get(REST_ACTION) == REST_ACTION_DENY:
+            result = self.get_log_status(waiters)
+            if result[REST_LOG_STATUS] == REST_STATUS_ENABLE:
+                rest[REST_ACTION] = REST_ACTION_PACKETIN
         actions = Action.to_openflow(self.dp, rest)
         flow = self._to_of_flow(cookie=cookie, priority=priority,
                                 match=match, actions=actions)
@@ -777,7 +827,7 @@ class Firewall(object):
                         and priority != LOG_FLOW_PRIORITY):
                     if ((rule_id == REST_ALL or rule_id == ruleid) and
                             (vlan_id == dl_vlan or vlan_id == REST_ALL)):
-                        match = Match.to_del_openflow(flow_stat[REST_MATCH])
+                        match = Match.to_mod_openflow(flow_stat[REST_MATCH])
                         delete_list.append([cookie, priority, match])
                     else:
                         if dl_vlan not in vlan_list:
@@ -831,7 +881,7 @@ class Firewall(object):
         rule = {REST_RULE_ID: ruleid}
         rule.update({REST_PRIORITY: flow[REST_PRIORITY]})
         rule.update(Match.to_rest(flow))
-        rule.update(Action.to_rest(flow))
+        rule.update(Action.to_rest(self.dp, flow))
         return rule
 
 
@@ -839,42 +889,134 @@ class Match(object):
 
     _CONVERT = {REST_DL_TYPE:
                 {REST_DL_TYPE_ARP: ether.ETH_TYPE_ARP,
-                 REST_DL_TYPE_IPV4: ether.ETH_TYPE_IP},
+                 REST_DL_TYPE_IPV4: ether.ETH_TYPE_IP,
+                 REST_DL_TYPE_IPV6: ether.ETH_TYPE_IPV6},
                 REST_NW_PROTO:
                 {REST_NW_PROTO_TCP: inet.IPPROTO_TCP,
                  REST_NW_PROTO_UDP: inet.IPPROTO_UDP,
-                 REST_NW_PROTO_ICMP: inet.IPPROTO_ICMP}}
+                 REST_NW_PROTO_ICMP: inet.IPPROTO_ICMP,
+                 REST_NW_PROTO_ICMPV6: inet.IPPROTO_ICMPV6}}
+
+    _MATCHES = [REST_IN_PORT,
+                REST_SRC_MAC,
+                REST_DST_MAC,
+                REST_DL_TYPE,
+                REST_DL_VLAN,
+                REST_SRC_IP,
+                REST_DST_IP,
+                REST_SRC_IPV6,
+                REST_DST_IPV6,
+                REST_NW_PROTO,
+                REST_TP_SRC,
+                REST_TP_DST]
 
     @staticmethod
     def to_openflow(rest):
+
+        def __inv_combi(msg):
+            raise ValueError('Invalid combination: [%s]' % msg)
+
+        def __inv_2and1(*args):
+            __inv_combi('%s=%s and %s' % (args[0], args[1], args[2]))
+
+        def __inv_2and2(*args):
+            __inv_combi('%s=%s and %s=%s' % (
+                args[0], args[1], args[2], args[3]))
+
+        def __inv_1and1(*args):
+            __inv_combi('%s and %s' % (args[0], args[1]))
+
+        def __inv_1and2(*args):
+            __inv_combi('%s and %s=%s' % (args[0], args[1], args[2]))
+
         match = {}
-        set_dltype_flg = False
+
+        # error check
+        dl_type = rest.get(REST_DL_TYPE)
+        nw_proto = rest.get(REST_NW_PROTO)
+        if dl_type is not None:
+            if dl_type == REST_DL_TYPE_ARP:
+                if REST_SRC_IPV6 in rest:
+                    __inv_2and1(
+                        REST_DL_TYPE, REST_DL_TYPE_ARP, REST_SRC_IPV6)
+                if REST_DST_IPV6 in rest:
+                    __inv_2and1(
+                        REST_DL_TYPE, REST_DL_TYPE_ARP, REST_DST_IPV6)
+                if nw_proto:
+                    __inv_2and1(
+                        REST_DL_TYPE, REST_DL_TYPE_ARP, REST_NW_PROTO)
+            elif dl_type == REST_DL_TYPE_IPV4:
+                if REST_SRC_IPV6 in rest:
+                    __inv_2and1(
+                        REST_DL_TYPE, REST_DL_TYPE_IPV4, REST_SRC_IPV6)
+                if REST_DST_IPV6 in rest:
+                    __inv_2and1(
+                        REST_DL_TYPE, REST_DL_TYPE_IPV4, REST_DST_IPV6)
+                if nw_proto == REST_NW_PROTO_ICMPV6:
+                    __inv_2and2(
+                        REST_DL_TYPE, REST_DL_TYPE_IPV4,
+                        REST_NW_PROTO, REST_NW_PROTO_ICMPV6)
+            elif dl_type == REST_DL_TYPE_IPV6:
+                if REST_SRC_IP in rest:
+                    __inv_2and1(
+                        REST_DL_TYPE, REST_DL_TYPE_IPV6, REST_SRC_IP)
+                if REST_DST_IP in rest:
+                    __inv_2and1(
+                        REST_DL_TYPE, REST_DL_TYPE_IPV6, REST_DST_IP)
+                if nw_proto == REST_NW_PROTO_ICMP:
+                    __inv_2and2(
+                        REST_DL_TYPE, REST_DL_TYPE_IPV6,
+                        REST_NW_PROTO, REST_NW_PROTO_ICMP)
+            else:
+                raise ValueError('Unknown dl_type : %s' % dl_type)
+        else:
+            if REST_SRC_IP in rest:
+                if REST_SRC_IPV6 in rest:
+                    __inv_1and1(REST_SRC_IP, REST_SRC_IPV6)
+                if REST_DST_IPV6 in rest:
+                    __inv_1and1(REST_SRC_IP, REST_DST_IPV6)
+                if nw_proto == REST_NW_PROTO_ICMPV6:
+                    __inv_1and2(
+                        REST_SRC_IP, REST_NW_PROTO, REST_NW_PROTO_ICMPV6)
+                rest[REST_DL_TYPE] = REST_DL_TYPE_IPV4
+            elif REST_DST_IP in rest:
+                if REST_SRC_IPV6 in rest:
+                    __inv_1and1(REST_DST_IP, REST_SRC_IPV6)
+                if REST_DST_IPV6 in rest:
+                    __inv_1and1(REST_DST_IP, REST_DST_IPV6)
+                if nw_proto == REST_NW_PROTO_ICMPV6:
+                    __inv_1and2(
+                        REST_DST_IP, REST_NW_PROTO, REST_NW_PROTO_ICMPV6)
+                rest[REST_DL_TYPE] = REST_DL_TYPE_IPV4
+            elif REST_SRC_IPV6 in rest:
+                if nw_proto == REST_NW_PROTO_ICMP:
+                    __inv_1and2(
+                        REST_SRC_IPV6, REST_NW_PROTO, REST_NW_PROTO_ICMP)
+                rest[REST_DL_TYPE] = REST_DL_TYPE_IPV6
+            elif REST_DST_IPV6 in rest:
+                if nw_proto == REST_NW_PROTO_ICMP:
+                    __inv_1and2(
+                        REST_DST_IPV6, REST_NW_PROTO, REST_NW_PROTO_ICMP)
+                rest[REST_DL_TYPE] = REST_DL_TYPE_IPV6
+            else:
+                if nw_proto == REST_NW_PROTO_ICMP:
+                    rest[REST_DL_TYPE] = REST_DL_TYPE_IPV4
+                elif nw_proto == REST_NW_PROTO_ICMPV6:
+                    rest[REST_DL_TYPE] = REST_DL_TYPE_IPV6
+                elif nw_proto == REST_NW_PROTO_TCP or \
+                        nw_proto == REST_NW_PROTO_UDP:
+                    raise ValueError('no dl_type was specified')
+                else:
+                    raise ValueError('Unknown nw_proto: %s' % nw_proto)
 
         for key, value in rest.items():
-            if (key == REST_SRC_IP or key == REST_DST_IP
-                    or key == REST_NW_PROTO):
-                if (REST_DL_TYPE in rest) is False:
-                    set_dltype_flg = True
-                elif (rest[REST_DL_TYPE] != REST_DL_TYPE_IPV4
-                        and rest[REST_DL_TYPE] != REST_DL_TYPE_ARP):
-                    continue
-
-            elif key == REST_TP_SRC or key == REST_TP_DST:
-                if ((REST_NW_PROTO in rest) is False
-                    or (rest[REST_NW_PROTO] != REST_NW_PROTO_TCP
-                        and rest[REST_NW_PROTO] != REST_NW_PROTO_UDP)):
-                    continue
-
             if key in Match._CONVERT:
                 if value in Match._CONVERT[key]:
                     match.setdefault(key, Match._CONVERT[key][value])
                 else:
                     raise ValueError('Invalid rule parameter. : key=%s' % key)
-            else:
+            elif key in Match._MATCHES:
                 match.setdefault(key, value)
-
-            if set_dltype_flg:
-                match.setdefault(REST_DL_TYPE, ether.ETH_TYPE_IP)
 
         return match
 
@@ -884,6 +1026,7 @@ class Match(object):
 
         mac_dontcare = mac.haddr_to_str(mac.DONTCARE)
         ip_dontcare = '0.0.0.0'
+        ipv6_dontcare = '::'
 
         match = {}
         for key, value in of_match.items():
@@ -892,6 +1035,9 @@ class Match(object):
                     continue
             elif key == REST_SRC_IP or key == REST_DST_IP:
                 if value == ip_dontcare:
+                    continue
+            elif key == REST_SRC_IPV6 or key == REST_DST_IPV6:
+                if value == ipv6_dontcare:
                     continue
             elif value == 0:
                 continue
@@ -906,9 +1052,10 @@ class Match(object):
         return match
 
     @staticmethod
-    def to_del_openflow(of_match):
+    def to_mod_openflow(of_match):
         mac_dontcare = mac.haddr_to_str(mac.DONTCARE)
         ip_dontcare = '0.0.0.0'
+        ipv6_dontcare = '::'
 
         match = {}
         for key, value in of_match.items():
@@ -917,6 +1064,9 @@ class Match(object):
                     continue
             elif key == REST_SRC_IP or key == REST_DST_IP:
                 if value == ip_dontcare:
+                    continue
+            elif key == REST_SRC_IPV6 or key == REST_DST_IPV6:
+                if value == ipv6_dontcare:
                     continue
             elif value == 0:
                 continue
@@ -941,16 +1091,18 @@ class Action(object):
         elif value == REST_ACTION_PACKETIN:
             out_port = dp.ofproto.OFPP_CONTROLLER
             action = [{'type': 'OUTPUT',
-                       'port': out_port}]
+                       'port': out_port,
+                       'max_len': 128}]
         else:
             raise ValueError('Invalid action type.')
 
         return action
 
     @staticmethod
-    def to_rest(openflow):
+    def to_rest(dp, openflow):
         if REST_ACTION in openflow:
-            if len(openflow[REST_ACTION]) > 0:
+            action_allow = 'OUTPUT:%d' % dp.ofproto.OFPP_NORMAL
+            if openflow[REST_ACTION] == [action_allow]:
                 action = {REST_ACTION: REST_ACTION_ALLOW}
             else:
                 action = {REST_ACTION: REST_ACTION_DENY}

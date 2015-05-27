@@ -15,14 +15,19 @@
 # limitations under the License.
 
 from __future__ import print_function
-from oslo.config import cfg
+from ryu import cfg
 import inspect
+import platform
 import logging
 import logging.config
 import logging.handlers
 import os
 import sys
-import ConfigParser
+
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 
 
 CONF = cfg.CONF
@@ -71,7 +76,7 @@ def init_log():
     if CONF.log_config_file:
         try:
             logging.config.fileConfig(CONF.log_config_file,
-                                      disable_existing_loggers=True)
+                                      disable_existing_loggers=False)
         except ConfigParser.Error as e:
             print('Failed to parse %s: %s' % (CONF.log_config_file, e),
                   file=sys.stderr)
@@ -85,7 +90,11 @@ def init_log():
         _EARLY_LOG_HANDLER = None
 
     if CONF.use_syslog:
-        syslog = logging.handlers.SysLogHandler(address='/dev/log')
+        if platform.system() == 'Darwin':
+            address = '/var/run/syslog'
+        else:
+            address = '/dev/log'
+        syslog = logging.handlers.SysLogHandler(address=address)
         log.addHandler(syslog)
 
     log_file = _get_log_file()

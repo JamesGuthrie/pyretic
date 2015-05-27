@@ -17,7 +17,7 @@ import logging
 import struct
 import time
 import json
-from oslo.config import cfg
+from ryu import cfg
 
 from ryu.topology import event
 from ryu.base import app_manager
@@ -35,6 +35,7 @@ from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import nx_match
 from ryu.ofproto import ofproto_v1_2
 from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ofproto_v1_4
 
 
 LOG = logging.getLogger(__name__)
@@ -394,10 +395,11 @@ class LLDPPacket(object):
     @staticmethod
     def lldp_parse(data):
         pkt = packet.Packet(data)
-        eth_pkt = pkt.next()
+        i = iter(pkt)
+        eth_pkt = i.next()
         assert type(eth_pkt) == ethernet.ethernet
 
-        lldp_pkt = pkt.next()
+        lldp_pkt = i.next()
         if type(lldp_pkt) != lldp.lldp:
             raise LLDPPacket.LLDPUnknownFormat()
 
@@ -425,6 +427,8 @@ class LLDPPacket(object):
 
 
 class Switches(app_manager.RyuApp):
+    OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION, ofproto_v1_2.OFP_VERSION,
+                    ofproto_v1_3.OFP_VERSION, ofproto_v1_4.OFP_VERSION]
     _EVENTS = [event.EventSwitchEnter, event.EventSwitchLeave,
                event.EventPortAdd, event.EventPortDelete,
                event.EventPortModify,
@@ -449,10 +453,10 @@ class Switches(app_manager.RyuApp):
         self.links = LinkState()      # Link class -> timestamp
         self.is_active = True
 
-        self.link_discovery = CONF.observe_links
+        self.link_discovery = self.CONF.observe_links
         if self.link_discovery:
-            self.install_flow = CONF.install_lldp_flow
-            self.explicit_drop = CONF.explicit_drop
+            self.install_flow = self.CONF.install_lldp_flow
+            self.explicit_drop = self.CONF.explicit_drop
             self.lldp_event = hub.Event()
             self.link_event = hub.Event()
             self.threads.append(hub.spawn(self.lldp_loop))
@@ -467,12 +471,12 @@ class Switches(app_manager.RyuApp):
 
     def _register(self, dp):
         assert dp.id is not None
-        assert dp.id not in self.dps
 
         self.dps[dp.id] = dp
-        self.port_state[dp.id] = PortState()
-        for port in dp.ports.values():
-            self.port_state[dp.id].add(port.port_no, port)
+        if dp.id not in self.port_state:
+            self.port_state[dp.id] = PortState()
+            for port in dp.ports.values():
+                self.port_state[dp.id].add(port.port_no, port)
 
     def _unregister(self, dp):
         if dp.id in self.dps:
@@ -522,10 +526,18 @@ class Switches(app_manager.RyuApp):
         LOG.debug(dp)
 
         if ev.state == MAIN_DISPATCHER:
+            dp_multiple_conns = False
+            if dp.id in self.dps:
+                LOG.warning('multiple connections from %s', dpid_to_str(dp.id))
+                dp_multiple_conns = True
+
             self._register(dp)
             switch = self._get_switch(dp.id)
             LOG.debug('register %s', switch)
-            self.send_event_to_observers(event.EventSwitchEnter(switch))
+
+            # Do not send event while dp has multiple connections.
+            if not dp_multiple_conns:
+                self.send_event_to_observers(event.EventSwitchEnter(switch))
 
             if not self.link_discovery:
                 return
@@ -544,14 +556,35 @@ class Switches(app_manager.RyuApp):
                         ofproto.OFPP_CONTROLLER, self.LLDP_PACKET_LEN)]
                     dp.send_flow_mod(
                         rule=rule, cookie=0, command=ofproto.OFPFC_ADD,
-                        idle_timeout=0, hard_timeout=0, actions=actions)
+                        idle_timeout=0, hard_timeout=0, actions=actions,
+                        priority=0xFFFF)
+                elif ofproto.OFP_VERSION >= ofproto_v1_2.OFP_VERSION:
+                    match = ofproto_parser.OFPMatch(
+                        eth_type=ETH_TYPE_LLDP,
+                        eth_dst=lldp.LLDP_MAC_NEAREST_BRIDGE)
+                    # OFPCML_NO_BUFFER is set so that the LLDP is not
+                    # buffered on switch
+                    parser = ofproto_parser
+                    actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                                      ofproto.OFPCML_NO_BUFFER
+                                                      )]
+                    inst = [parser.OFPInstructionActions(
+                            ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                    mod = parser.OFPFlowMod(datapath=dp, match=match,
+                                            idle_timeout=0, hard_timeout=0,
+                                            instructions=inst,
+                                            priority=0xFFFF)
+                    dp.send_msg(mod)
                 else:
                     LOG.error('cannot install flow. unsupported version. %x',
                               dp.ofproto.OFP_VERSION)
 
-            for port in switch.ports:
-                if not port.is_reserved():
-                    self._port_added(port)
+            # Do not add ports while dp has multiple connections to controller.
+            if not dp_multiple_conns:
+                for port in switch.ports:
+                    if not port.is_reserved():
+                        self._port_added(port)
+
             self.lldp_event.set()
 
         elif ev.state == DEAD_DISPATCHER:
@@ -580,9 +613,9 @@ class Switches(app_manager.RyuApp):
         ofpport = msg.desc
 
         if reason == dp.ofproto.OFPPR_ADD:
-            #LOG.debug('A port was added.' +
-            #          '(datapath id = %s, port number = %s)',
-            #          dp.id, ofpport.port_no)
+            # LOG.debug('A port was added.' +
+            #           '(datapath id = %s, port number = %s)',
+            #           dp.id, ofpport.port_no)
             self.port_state[dp.id].add(ofpport.port_no, ofpport)
             self.send_event_to_observers(
                 event.EventPortAdd(Port(dp.id, dp.ofproto, ofpport)))
@@ -596,9 +629,9 @@ class Switches(app_manager.RyuApp):
                 self.lldp_event.set()
 
         elif reason == dp.ofproto.OFPPR_DELETE:
-            #LOG.debug('A port was deleted.' +
-            #          '(datapath id = %s, port number = %s)',
-            #          dp.id, ofpport.port_no)
+            # LOG.debug('A port was deleted.' +
+            #           '(datapath id = %s, port number = %s)',
+            #           dp.id, ofpport.port_no)
             self.port_state[dp.id].remove(ofpport.port_no)
             self.send_event_to_observers(
                 event.EventPortDelete(Port(dp.id, dp.ofproto, ofpport)))
@@ -614,9 +647,9 @@ class Switches(app_manager.RyuApp):
 
         else:
             assert reason == dp.ofproto.OFPPR_MODIFY
-            #LOG.debug('A port was modified.' +
-            #          '(datapath id = %s, port number = %s)',
-            #          dp.id, ofpport.port_no)
+            # LOG.debug('A port was modified.' +
+            #           '(datapath id = %s, port number = %s)',
+            #           dp.id, ofpport.port_no)
             self.port_state[dp.id].modify(ofpport.port_no, ofpport)
             self.send_event_to_observers(
                 event.EventPortModify(Port(dp.id, dp.ofproto, ofpport)))
@@ -640,6 +673,8 @@ class Switches(app_manager.RyuApp):
         # TODO:XXX
         if dp.ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             dp.send_packet_out(buffer_id, msg.in_port, [])
+        elif dp.ofproto.OFP_VERSION >= ofproto_v1_2.OFP_VERSION:
+            dp.send_packet_out(buffer_id, msg.match['in_port'], [])
         else:
             LOG.error('cannot drop_packet. unsupported version. %x',
                       dp.ofproto.OFP_VERSION)
@@ -658,7 +693,13 @@ class Switches(app_manager.RyuApp):
             return
 
         dst_dpid = msg.datapath.id
-        dst_port_no = msg.in_port
+        if msg.datapath.ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
+            dst_port_no = msg.in_port
+        elif msg.datapath.ofproto.OFP_VERSION >= ofproto_v1_2.OFP_VERSION:
+            dst_port_no = msg.match['in_port']
+        else:
+            LOG.error('cannot accept LLDP. unsupported version. %x',
+                      msg.datapath.ofproto.OFP_VERSION)
 
         src = self._get_port(src_dpid, src_port_no)
         if not src or src.dpid == dst_dpid:
@@ -686,7 +727,7 @@ class Switches(app_manager.RyuApp):
             self.send_event_to_observers(event.EventLinkDelete(old_link))
 
         link = Link(src, dst)
-        if not link in self.links:
+        if link not in self.links:
             self.send_event_to_observers(event.EventLinkAdd(link))
 
         if not self.links.update_link(src, dst):
@@ -717,6 +758,13 @@ class Switches(app_manager.RyuApp):
         if dp.ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             actions = [dp.ofproto_parser.OFPActionOutput(port.port_no)]
             dp.send_packet_out(actions=actions, data=port_data.lldp_data)
+        elif dp.ofproto.OFP_VERSION >= ofproto_v1_2.OFP_VERSION:
+            actions = [dp.ofproto_parser.OFPActionOutput(port.port_no)]
+            out = dp.ofproto_parser.OFPPacketOut(
+                datapath=dp, in_port=dp.ofproto.OFPP_CONTROLLER,
+                buffer_id=dp.ofproto.OFP_NO_BUFFER, actions=actions,
+                data=port_data.lldp_data)
+            dp.send_msg(out)
         else:
             LOG.error('cannot send lldp packet. unsupported version. %x',
                       dp.ofproto.OFP_VERSION)
@@ -814,21 +862,3 @@ class Switches(app_manager.RyuApp):
             links = [link for link in self.links if link.src.dpid == dpid]
         rep = event.EventLinkReply(req.src, dpid, links)
         self.reply_to_request(req, rep)
-
-
-def get_switch(app, dpid=None):
-    rep = app.send_request(event.EventSwitchRequest(dpid))
-    return rep.switches
-
-
-def get_all_switch(app):
-    return get_switch(app)
-
-
-def get_link(app, dpid=None):
-    rep = app.send_request(event.EventLinkRequest(dpid))
-    return rep.links
-
-
-def get_all_link(app):
-    return get_link(app)
