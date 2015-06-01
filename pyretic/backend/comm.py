@@ -32,6 +32,12 @@ import asyncore
 import socket
 
 import json
+import sys
+
+py2 = False
+
+if sys.version_info[0] == 2:
+    py2 = True
 
 BACKEND_PORT=41414
 TERM_CHAR=b'\n'
@@ -39,7 +45,7 @@ TERM_CHAR=b'\n'
 def serialize(msg):
     jsonable_msg = to_jsonable_format(msg)
     jsoned_msg = json.dumps(jsonable_msg)
-    serialized_msg = jsoned_msg.encode('ascii') + TERM_CHAR
+    serialized_msg = jsoned_msg.encode('latin') + TERM_CHAR
     return serialized_msg
 
 def deserialize(serialized_msgs):
@@ -47,7 +53,7 @@ def deserialize(serialized_msgs):
         if isinstance(item, str):
             return item
         elif isinstance(item, bytes):
-            return item.decode('utf-8')
+            return item.decode('latin')
         elif isinstance(item, dict):
             return bytelist2ascii({ 
                     json2python(k) : json2python(v) 
@@ -58,7 +64,7 @@ def deserialize(serialized_msgs):
         else:
             return item
     serialized_msg = serialized_msgs.pop(0)
-    jsoned_msg = serialized_msg.rstrip(TERM_CHAR).decode('utf-8')
+    jsoned_msg = serialized_msg.rstrip(TERM_CHAR).decode('latin')
     msg = None
     while True:
         try:
@@ -68,7 +74,7 @@ def deserialize(serialized_msgs):
         except:
             if len(serialized_msgs) == 0:
                 break
-            next_part = serialized_msgs.pop(0).rstrip(TERM_CHAR).decode('utf-8')
+            next_part = serialized_msgs.pop(0).rstrip(TERM_CHAR).decode('latin')
             jsoned_msg += next_part
     return msg
 
@@ -78,6 +84,8 @@ def dict_to_ascii(d):
         if (isinstance(v,str) or
             isinstance(v,int)):
             return v
+        elif isinstance(v, bytes):
+            return list(v)
         else:
             return repr(v)
     return { h : convert(h,v) for (h,v) in list(d.items()) }
@@ -88,7 +96,10 @@ def bytelist2ascii(packet_dict):
         if h in ['srcmac','dstmac','srcip','dstip']:
             return ''.join([chr(d) for d in val])
         elif h in ['raw']:
-            return bytes(val)
+            if py2:
+                return ''.join([chr(d) for d in val])
+            else:
+                return bytes(val)
         else:
             return val
     return { h : convert(h,val) for (h, val) in list(packet_dict.items())}
@@ -96,10 +107,13 @@ def bytelist2ascii(packet_dict):
 
 def ascii2bytelist(packet_dict):
     def convert(h,val):
-        if h in ['srcmac','dstmac','srcip','dstip','raw']:
+        if h in ['srcmac','dstmac','srcip','dstip']:
             return [ord(c) for c in val]
-        elif h in ['raw']:
-            return [c for c in val]
+        elif h in ['raw'] and py2:
+            if py2:
+                return [ord(c) for c in val]
+            else:
+                return val
         else:
             return val
     return { h : convert(h,val) for (h, val) in list(packet_dict.items())}
