@@ -87,6 +87,8 @@ class BackendChannel(asynchat.async_chat):
                     return val
             elif h in ['vlan_id','vlan_pcp'] and val == 'None':
                 return None
+            elif h in ['raw']:
+                return bytes(val)
             else:
                 return val
         return { h : convert(h,val) for (h, val) in d.items()}

@@ -167,9 +167,9 @@ class Processor(object):
                 pack_pyretic_headers(pyr_pkt, pkt, exclusive_groups)
 
             pkt.serialize()
-            pyr_pkt['raw'] = str(pkt.data)
+            pyr_pkt['raw'] = bytes(pkt.data)
 
-            return str(pkt.data)
+            return bytes(pkt.data)
 
 
         setattr(self, 'unpack', expand)
