@@ -525,7 +525,13 @@ class modify(Policy):
            and (self.map == other.map) )
 
     def __hash__(self):
-        return id(self)
+        # This implementation assumes that the map is not a nested dictionary
+        h = 0
+        if self.map:
+            for k in sorted(self.map):
+                h ^= hash(k) ^ hash(self.map[k])
+        return h
+
 
 class _modify(modify):
     def __init__(self, *args, **kwargs):
