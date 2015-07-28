@@ -1058,7 +1058,7 @@ class Runtime(object):
         #classifier = send_drops_to_controller(classifier)
         classifier = remove_identity(classifier)
         classifier = remove_path_buckets(classifier)
-        classifier = controllerify(classifier)
+        #classifier = controllerify(classifier)
         classifier = layer_3_specialize(classifier)
 
         # TODO(ngsrinivas): As of OVS 1.9, vlan_specialize seems unnecessary to
