@@ -173,7 +173,7 @@ class QueueStreamHandler(StreamHandler):
 def string_to_network(ip_str):
     """ Return an IPv4Network object from a dotted quad IP address/subnet. """
     try:
-        return IPv4Network(ip_str)
+        return IPv4Network(ip_str, strict=False)
     except AddressValueError:
         raise TypeError('Input not a valid IP address!')
 

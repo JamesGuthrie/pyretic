@@ -28,7 +28,7 @@ def checksum(data):
     if len(data) % 2:
         data += '\x00'
 
-    data = str(data)    # input can be bytearray.
+    data = bytes(data)    # input can be bytearray.
     s = sum(array.array('H', data))
     s = (s & 0xffff) + (s >> 16)
     s += (s >> 16)
