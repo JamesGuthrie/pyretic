@@ -772,7 +772,8 @@ class Runtime(object):
                     for a in r.actions:
                         fields = set(a.keys())
                         if fields - moded_fields:
-                            raise TypeError('Non-compilable rule',str(r))  
+                            pass
+                            #raise TypeError('Non-compilable rule',str(r))
             for r in classifier.rules:
                 r_minus_queries = Rule(r.match,
                                        [x for x in r.actions if not isinstance(x, Query)])
