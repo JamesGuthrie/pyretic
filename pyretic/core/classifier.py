@@ -1,7 +1,10 @@
-
-from collections import deque
+from typing import Any, Callable, Iterable, Dict, Tuple
+from collections import deque, OrderedDict
 import copy
 from functools import reduce
+
+
+TABLE_START_PRIORITY = 60000
 
 ###############################################################################
 # Classifiers
@@ -116,12 +119,14 @@ class Classifier(object):
             self.rules = new_rules
         else:
             raise TypeError
+        self._maps = OrderedDict()  # type: Dict[Callable[[Rule, Any], Iterable[Rule]], Any] maps callables to their arguments
+        self.version = None
 
     def __len__(self):
         return len(self.rules)
 
     def __str__(self):
-        return '\n '.join(map(str,self.rules))
+        return '\n '.join(map(str, self.rules))
 
     def __repr__(self):
         return str(self)
@@ -167,7 +172,7 @@ class Classifier(object):
         self.rules.pop()
 
     def __copy__(self):
-        copied_rules = list(map(copy.copy,self.rules))
+        copied_rules = list(map(copy.copy, self.rules))
         return Classifier(copied_rules)
 
 
@@ -361,3 +366,37 @@ class Classifier(object):
                           False):
                 opt_c.rules.append(r)
         return opt_c
+
+    def register_map(self, mapper: Callable[[Iterable[Rule], Any], Iterable[Rule]], *args) -> None:
+        if args:
+            self._maps[mapper] = args
+        else:
+            self._maps[mapper] = None
+
+    def _chain_map(self, rules: Iterable[Rule], maps: Dict[Callable[[Iterable[Rule], Any], Iterable[Rule]], Any]) -> Iterable[Rule]:
+        if maps.keys():
+            mapper, args = maps.popitem(False)
+            if args:
+                yield from self._chain_map(mapper(rules, args), maps)
+            else:
+                yield from self._chain_map(mapper(rules), maps)
+        else:
+            yield from rules
+
+    def rules_for_install(self) -> Iterable[Tuple[Any, int, Any, int]]:
+        """Returns rules, their priorities, and the classifier version.
+
+        When installing rules to the switch, the runtime works with lists of
+        (rule.match, priority, rule.actions, classifier_version). This method
+        returns the rules
+
+        """
+        prio = {}
+        maps = copy.copy(self._maps)
+        for rule in self._chain_map((r for r in self.rules), maps):
+            s = rule.match['switch']
+            try:
+                prio[s] -=1
+            except KeyError:
+                prio[s] = TABLE_START_PRIORITY
+            yield rule.match, prio[s], rule.actions, self.version

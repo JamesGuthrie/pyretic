@@ -476,18 +476,17 @@ class Runtime(object):
         # TODO (josh) logic for detecting action sets that can't be compiled
         # e.g., {modify(dstip='10.0.0.1',outport=1),modify(srcip='10.0.0.2',outport=2)]
 
-        def remove_identity(classifier):
+        def remove_identity(rules):
             """
             Removes identity policies from the action list.
             
-            :param classifier: the input classifer
-            :type classifier: Classifier
-            :returns: the output classifier
-            :rtype: Classifier
+            :param rules: input rules
+            :type rules: Iterable[Rule]
+            :returns: output rules
+            :rtype: Iterable[Rule]
             """
-            return Classifier(Rule(rule.match,
-                                   [a for a in rule.actions if a != identity])
-                              for rule in classifier.rules)
+            for rule in rules:
+                yield Rule(rule.match, [a for a in rule.actions if a != identity])
 
         def remove_path_buckets(classifier):
             """
@@ -560,24 +559,23 @@ class Runtime(object):
                     specialized_rules.append(rule)
             return Classifier(specialized_rules)
 
-        def layer_3_specialize(classifier):
+        def layer_3_specialize(rules):
             """
             Specialize a layer-3 rule to several rules that match on layer-2 fields.
             OpenFlow requires a layer-3 match to match on layer-2 ethtype.  Also, 
             make sure that LLDP packets are reserved for use by the runtime.
             
-            :param classifier: the input classifer
-            :type classifier: Classifier
-            :returns: the output classifier
-            :rtype: Classifier
+            :param rules: input rules
+            :type rules: Iterable[Rule]
+            :returns: output rules
+            :rtype: Iterable[Rule]
             """
-            specialized_rules = []
-            for rule in classifier.rules:
-                if ( isinstance(rule.match, match) and
-                     ( 'srcip' in rule.match.map or 
-                       'dstip' in rule.match.map ) and 
-                     not 'ethtype' in rule.match.map ):
-                    specialized_rules.append(Rule(rule.match & match(ethtype=IP_TYPE),rule.actions))
+            for rule in rules:
+                if (isinstance(rule.match, match)
+                        and ('srcip' in rule.match.map
+                             or 'dstip' in rule.match.map)
+                        and 'ethtype' not in rule.match.map):
+                    yield Rule(rule.match & match(ethtype=IP_TYPE), rule.actions)
 
                     # DEAL W/ BUG IN OVS ACCEPTING ARP RULES THAT AREN'T ACTUALLY EXECUTED
                     arp_bug = False
@@ -587,13 +585,13 @@ class Runtime(object):
                         elif len(action.map) > 1:
                             arp_bug = True
                             break
+
                     if arp_bug:
-                        specialized_rules.append(Rule(rule.match & match(ethtype=ARP_TYPE),[Controller]))
+                        yield Rule(rule.match & match(ethtype=ARP_TYPE), [Controller])
                     else:
-                        specialized_rules.append(Rule(rule.match & match(ethtype=ARP_TYPE),rule.actions))
+                        yield Rule(rule.match & match(ethtype=ARP_TYPE), rule.actions)
                 else:
-                    specialized_rules.append(rule)
-            return Classifier(specialized_rules)
+                    yield rule
 
         def bookkeep_buckets(diff_lists):
             """Whenever rules are associated with counting buckets,
@@ -691,81 +689,75 @@ class Runtime(object):
                 new_diff_lists.append(new_lst)
             return new_diff_lists
 
-        def switchify(classifier,switches):
+        def switchify(rules, args):
             """
-            Specialize a classifer to a set of switches.  Any rule that doesn't 
+            Specialize rules to a set of switches.  Any rule that doesn't
             specify a match on switch is turned into a set of rules matching on
             each switch respectively.
             
-            :param classifier: the input classifer
-            :type classifier: Classifier
+            :param rules: input rules
+            :type rule: Iterable[Rule]
             :param switches: the network switches
             :type switches: set int
-            :returns: the output classifier
-            :rtype: Classifier
+            :returns: output rules
+            :rtype: Iterable[Rule]
             """
-            new_rules = list()
-            for rule in classifier.rules:
+            switches = args[0]
+            for rule in rules:
                 if isinstance(rule.match, match) and 'switch' in rule.match.map:
-                    if not rule.match.map['switch'] in switches:
-                        continue
-                    new_rules.append(rule)
+                    if rule.match.map['switch'] in switches:
+                        yield rule
                 else:
                     for s in switches:
-                        new_rules.append(Rule(
-                                rule.match.intersect(match(switch=s)),
-                                rule.actions))
-            return Classifier(new_rules)
+                        yield Rule(rule.match.intersect(match(switch=s)), rule.actions)
 
-        def concretize(classifier):
+        def concretize(rules):
             """
             Convert policies into dictionaries.
-            
-            :param classifier: the input classifer
-            :type classifier: Classifier
-            :returns: the output classifier
-            :rtype: Classifier
+
+            :param rules: input rules
+            :type rules: Iterable[Rule]
+            :returns: output rules
+            :rtype: Iterable[Rule]
             """
-            def concretize_rule_actions(rule):
-                def concretize_match(pred):
-                    if pred == false:
-                        return None
-                    elif pred == true:
-                        return {}
-                    elif isinstance(pred, match):
-                        concrete_match = { k:v for (k,v) in list(pred.map.items()) }
-                        net_to_str = util.network_to_string
-                        for field in ['srcip', 'dstip']:
-                            try:
-                                val = net_to_str(concrete_match[field])
-                                concrete_match.update({field: val})
-                            except KeyError:
-                                pass
-                        return concrete_match
-                def concretize_action(a):
-                    if a == Controller:
-                        return {'outport' : OFPP_CONTROLLER}
-                    elif isinstance(a,modify):
-                        return { k:v for (k,v) in a.map.items() }
-                    else: # default
-                        return a
+            def concretize_match(pred):
+                if pred == false:
+                    return None
+                elif pred == true:
+                    return {}
+                elif isinstance(pred, match):
+                    concrete_match = { k:v for (k,v) in list(pred.map.items()) }
+                    net_to_str = util.network_to_string
+                    for field in ['srcip', 'dstip']:
+                        try:
+                            val = net_to_str(concrete_match[field])
+                            concrete_match.update({field: val})
+                        except KeyError:
+                            pass
+                    return concrete_match
+
+            def concretize_action(a):
+                if a == Controller:
+                    return {'outport' : OFPP_CONTROLLER}
+                elif isinstance(a,modify):
+                    return { k:v for (k,v) in a.map.items() }
+                else: # default
+                    return a
+
+            for rule in rules:
                 m = concretize_match(rule.match)
                 acts = [concretize_action(a) for a in rule.actions]
-                if m is None:
-                    return None
-                else:
-                    return Rule(m,acts)
-            crs = [concretize_rule_actions(r) for r in classifier.rules]
-            crs = [cr for cr in crs if not cr is None]
-            return Classifier(crs)
+                if m is not None:
+                    yield Rule(m, acts)
 
-        def check_OF_rules(classifier):
+        def check_OF_rule(rules):
             def check_OF_rule_has_outport(r):
                 for a in r.actions:
                     if not 'outport' in a:
-                        raise TypeError('Invalid rule: concrete actions must have an outport',str(r))  
+                        raise TypeError('Invalid rule: concrete actions must have an outport',str(r))
+
             def check_OF_rule_has_compilable_action_list(r):
-                if len(r.actions)<2:
+                if len(r.actions) < 2:
                     pass
                 else:
                     moded_fields = set(r.actions[0].keys())
@@ -773,28 +765,26 @@ class Runtime(object):
                         fields = set(a.keys())
                         if fields - moded_fields:
                             pass
-                            #raise TypeError('Non-compilable rule',str(r))
-            for r in classifier.rules:
-                r_minus_queries = Rule(r.match,
-                                       [x for x in r.actions if not isinstance(x, Query)])
+                            # raise TypeError('Non-compilable rule',str(r))
+
+            for rule in rules:
+                r_minus_queries = Rule(rule.match,
+                                       [x for x in rule.actions if not isinstance(x, Query)])
                 check_OF_rule_has_outport(r_minus_queries)
                 check_OF_rule_has_compilable_action_list(r_minus_queries)
-            return Classifier(classifier.rules)
+                yield rule
 
-        def OF_inportize(classifier):
+        def OF_inportize(rules):
             """
-            Specialize classifier to ensure that packets to be forwarded 
+            Specialize rule to ensure that packets to be forwarded
             out the inport on which they arrived are handled correctly.
 
-            :param classifier: the input classifer
-            :param switch_to_attrs: switch to attributes map
-            :type classifier: Classifier
-            :type switch_to_attrs: dictionary switch to attrs
-            :returns: the output classifier
-            :rtype: Classifier
+            :param rules: an iterable of rules
+            :type rules: Iterable[Rule]
+            :returns: an iterable of output rules
+            :rtype: Iterable[Rule]
             """
-            import copy
-            def specialize_actions(actions,outport):
+            def specialize_actions(actions, outport):
                 new_actions = []
                 for act in actions:
                     if not isinstance(act, CountBucket):
@@ -813,52 +803,28 @@ class Runtime(object):
                                          # this may not hold when we move to OF 1.3
                 return new_actions
 
-            specialized_rules = []
-            for rule in classifier.rules:
+            for rule in rules:
                 phys_actions = [a for a in rule.actions if (not isinstance(a, CountBucket)
-                                                 and a['outport'] != OFPP_CONTROLLER
-                                                 and a['outport'] != OFPP_IN_PORT)]
+                                                            and a['outport'] != OFPP_CONTROLLER
+                                                            and a['outport'] != OFPP_IN_PORT)]
                 outports_used = [a['outport'] for a in phys_actions]
                 if not 'inport' in rule.match:
                     # Add a modified rule for each of the outports_used
-                    switch = rule.match['switch']
                     for outport in outports_used:
                         new_match = copy.deepcopy(rule.match)
                         new_match['inport'] = outport
-                        new_actions = specialize_actions(rule.actions,outport)
-                        specialized_rules.append(Rule(new_match,new_actions))
+                        new_actions = specialize_actions(rule.actions, outport)
+                        yield Rule(new_match, new_actions)
                     # And a default rule for any inport outside the set of outports_used
-                    specialized_rules.append(rule)
+                    yield rule
                 else:
                     if rule.match['inport'] in outports_used:
                         # Modify the set of actions
-                        new_actions = specialize_actions(rule.actions,rule.match['inport'])
-                        specialized_rules.append(Rule(rule.match,new_actions))
+                        new_actions = specialize_actions(rule.actions, rule.match['inport'])
+                        yield Rule(rule.match, new_actions)
                     else:
                         # Leave as before
-                        specialized_rules.append(rule)
-
-            return Classifier(specialized_rules)
-
-        def prioritize(classifier):
-            """
-            Add priorities to classifier rules based on their ordering.
-            
-            :param classifier: the input classifer
-            :type classifier: Classifier
-            :returns: the output classifier
-            :rtype: Classifier
-            """
-            priority = {}
-            tuple_rules = list()
-            for rule in classifier.rules:
-                s = rule.match['switch']
-                try:
-                    priority[s] -= 1
-                except KeyError:
-                    priority[s] = TABLE_START_PRIORITY
-                tuple_rules.append((rule.match,priority[s],rule.actions))
-            return tuple_rules
+                        yield rule
 
         ### UPDATE LOGIC
 
@@ -903,23 +869,6 @@ class Runtime(object):
                 if target[0] == rule[0] and target[1] == rule[1]:
                     return rule
             return None
-
-        def get_new_rules(classifier, curr_classifier_no):
-            def add_version(rules, version):
-                new_rules = []
-                for r in rules:
-                    new_rules.append(r + (version,))
-                return new_rules
-
-            switches = self.network.switch_list()
-
-            classifier = switchify(classifier,switches)
-            classifier = concretize(classifier)
-            classifier = check_OF_rules(classifier)
-            classifier = OF_inportize(classifier)
-            new_rules = prioritize(classifier)
-            new_rules = add_version(new_rules, curr_classifier_no)
-            return new_rules
 
         def get_nuclear_diff(new_rules):
             """Compute diff lists for a nuclear install, i.e., when all rules
@@ -1056,10 +1005,10 @@ class Runtime(object):
         # Process classifier to an openflow-compatible format before
         # sending out rule installs
         #classifier = send_drops_to_controller(classifier)
-        classifier = remove_identity(classifier)
-        classifier = remove_path_buckets(classifier)
+        classifier.register_map(remove_identity)
+        #classifier = remove_path_buckets(classifier)
         #classifier = controllerify(classifier)
-        classifier = layer_3_specialize(classifier)
+        classifier.register_map(layer_3_specialize)
 
         # TODO(ngsrinivas): As of OVS 1.9, vlan_specialize seems unnecessary to
         # keep track of rules that match packets without a VLAN, to the best of
@@ -1073,7 +1022,16 @@ class Runtime(object):
         # bookkeeping and removing of bucket actions happens at the end of the
         # whole pipeline, because buckets need very precise mappings to the
         # rules installed by the runtime.
-        new_rules = get_new_rules(classifier, curr_version_no)
+
+        switches = self.network.switch_list()
+
+        classifier.register_map(switchify, switches)
+        classifier.register_map(concretize)
+        # classifier.register_map(check_OF_rule)
+        classifier.register_map(OF_inportize)
+        classifier.version = curr_version_no
+
+        new_rules = list(classifier.rules_for_install())
         self.log.debug("Number of rules in classifier: %d" % len(new_rules))
         diff_lists = get_diff_lists(new_rules)
         bookkeep_buckets(diff_lists)
@@ -1085,7 +1043,7 @@ class Runtime(object):
             self.log.debug(str(rule))
         self.log.debug('================================')
 
-        p = Process(target=f, args=(diff_lists,curr_version_no))
+        p = Process(target=f, args=(diff_lists, curr_version_no))
         p.daemon = True
         p.start()
 
