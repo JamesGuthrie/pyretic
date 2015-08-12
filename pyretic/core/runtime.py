@@ -47,6 +47,170 @@ TABLE_START_PRIORITY = 60000
 STATS_REQUERY_THRESHOLD_SEC = 10
 NUM_PATH_TAGS=1022
 
+
+def remove_identity(rules):
+    """
+    Removes identity policies from the action list.
+
+    :param rules: input rules
+    :type rules: Iterable[Rule]
+    :returns: output rules
+    :rtype: Iterable[Rule]
+    """
+    for rule in rules:
+        yield Rule(rule.match, [a for a in rule.actions if a != identity])
+
+def layer_3_specialize(rules):
+    """
+    Specialize a layer-3 rule to several rules that match on layer-2 fields.
+    OpenFlow requires a layer-3 match to match on layer-2 ethtype.  Also,
+    make sure that LLDP packets are reserved for use by the runtime.
+
+    :param rules: input rules
+    :type rules: Iterable[Rule]
+    :returns: output rules
+    :rtype: Iterable[Rule]
+    """
+    for rule in rules:
+        if (isinstance(rule.match, match)
+                and ('srcip' in rule.match.map
+                     or 'dstip' in rule.match.map)
+                and 'ethtype' not in rule.match.map):
+            yield Rule(rule.match & match(ethtype=IP_TYPE), rule.actions)
+
+            # DEAL W/ BUG IN OVS ACCEPTING ARP RULES THAT AREN'T ACTUALLY EXECUTED
+            arp_bug = False
+            for action in rule.actions:
+                if action == Controller or isinstance(action, CountBucket):
+                    pass
+                elif len(action.map) > 1:
+                    arp_bug = True
+                    break
+
+            if arp_bug:
+                yield Rule(rule.match & match(ethtype=ARP_TYPE), [Controller])
+            else:
+                yield Rule(rule.match & match(ethtype=ARP_TYPE), rule.actions)
+        else:
+            yield rule
+
+def switchify(rules, args):
+    """
+    Specialize rules to a set of switches.  Any rule that doesn't
+    specify a match on switch is turned into a set of rules matching on
+    each switch respectively.
+
+    :param rules: input rules
+    :type rule: Iterable[Rule]
+    :param switches: the network switches
+    :type switches: set int
+    :returns: output rules
+    :rtype: Iterable[Rule]
+    """
+    switches = args[0]
+    for rule in rules:
+        if isinstance(rule.match, match):
+            if 'switch' in rule.match.map:
+                if rule.match.map['switch'] in switches:
+                    yield rule
+            else:
+                for s in switches:
+                    yield Rule(rule.match.intersect(match(switch=s)), rule.actions)
+        else:
+            raise RuntimeError("Can't process this rule")
+
+def concretize(rules):
+    """
+    Convert policies into dictionaries.
+
+    :param rules: input rules
+    :type rules: Iterable[Rule]
+    :returns: output rules
+    :rtype: Iterable[Rule]
+    """
+    def concretize_match(pred):
+        if pred == false:
+            return None
+        elif pred == true:
+            return {}
+        elif isinstance(pred, match):
+            concrete_match = { k:v for (k,v) in list(pred.map.items()) }
+            net_to_str = util.network_to_string
+            for field in ['srcip', 'dstip']:
+                try:
+                    val = net_to_str(concrete_match[field])
+                    concrete_match.update({field: val})
+                except KeyError:
+                    pass
+            return concrete_match
+
+    def concretize_action(a):
+        if a == Controller:
+            return {'outport' : OFPP_CONTROLLER}
+        elif isinstance(a,modify):
+            return { k:v for (k,v) in a.map.items() }
+        else: # default
+            return a
+
+    for rule in rules:
+        m = concretize_match(rule.match)
+        acts = [concretize_action(a) for a in rule.actions]
+        if m is not None:
+            yield Rule(m, acts)
+
+def OF_inportize(rules):
+    """
+    Specialize rule to ensure that packets to be forwarded
+    out the inport on which they arrived are handled correctly.
+
+    :param rules: an iterable of rules
+    :type rules: Iterable[Rule]
+    :returns: an iterable of output rules
+    :rtype: Iterable[Rule]
+    """
+    def specialize_actions(actions, outport):
+        new_actions = []
+        for act in actions:
+            if not isinstance(act, CountBucket):
+                new_actions.append(copy.deepcopy(act))
+            else:
+                new_actions.append(act) # can't make copies of
+                                        # CountBuckets without
+                                        # forking
+        for action in new_actions:
+            try:
+                if not isinstance(action, CountBucket):
+                    if action['outport'] == outport:
+                        action['outport'] = OFPP_IN_PORT
+            except:
+                raise TypeError  # INVARIANT: every set of actions must go out a port
+                                 # this may not hold when we move to OF 1.3
+        return new_actions
+
+    for rule in rules:
+        phys_actions = [a for a in rule.actions if (not isinstance(a, CountBucket)
+                                                    and a['outport'] != OFPP_CONTROLLER
+                                                    and a['outport'] != OFPP_IN_PORT)]
+        outports_used = [a['outport'] for a in phys_actions]
+        if not 'inport' in rule.match:
+            # Add a modified rule for each of the outports_used
+            for outport in outports_used:
+                new_match = copy.deepcopy(rule.match)
+                new_match['inport'] = outport
+                new_actions = specialize_actions(rule.actions, outport)
+                yield Rule(new_match, new_actions)
+            # And a default rule for any inport outside the set of outports_used
+            yield rule
+        else:
+            if rule.match['inport'] in outports_used:
+                # Modify the set of actions
+                new_actions = specialize_actions(rule.actions, rule.match['inport'])
+                yield Rule(rule.match, new_actions)
+            else:
+                # Leave as before
+                yield rule
+
+
 class Runtime(object):
     """
     The Runtime system.  Includes packet handling, compilation to OF switches,
@@ -476,18 +640,6 @@ class Runtime(object):
         # TODO (josh) logic for detecting action sets that can't be compiled
         # e.g., {modify(dstip='10.0.0.1',outport=1),modify(srcip='10.0.0.2',outport=2)]
 
-        def remove_identity(rules):
-            """
-            Removes identity policies from the action list.
-            
-            :param rules: input rules
-            :type rules: Iterable[Rule]
-            :returns: output rules
-            :rtype: Iterable[Rule]
-            """
-            for rule in rules:
-                yield Rule(rule.match, [a for a in rule.actions if a != identity])
-
         def remove_path_buckets(classifier):
             """
             Removes "path buckets" from the action list. Also hooks up runtime
@@ -558,40 +710,6 @@ class Runtime(object):
                 else:
                     specialized_rules.append(rule)
             return Classifier(specialized_rules)
-
-        def layer_3_specialize(rules):
-            """
-            Specialize a layer-3 rule to several rules that match on layer-2 fields.
-            OpenFlow requires a layer-3 match to match on layer-2 ethtype.  Also, 
-            make sure that LLDP packets are reserved for use by the runtime.
-            
-            :param rules: input rules
-            :type rules: Iterable[Rule]
-            :returns: output rules
-            :rtype: Iterable[Rule]
-            """
-            for rule in rules:
-                if (isinstance(rule.match, match)
-                        and ('srcip' in rule.match.map
-                             or 'dstip' in rule.match.map)
-                        and 'ethtype' not in rule.match.map):
-                    yield Rule(rule.match & match(ethtype=IP_TYPE), rule.actions)
-
-                    # DEAL W/ BUG IN OVS ACCEPTING ARP RULES THAT AREN'T ACTUALLY EXECUTED
-                    arp_bug = False
-                    for action in rule.actions:
-                        if action == Controller or isinstance(action, CountBucket):
-                            pass
-                        elif len(action.map) > 1:
-                            arp_bug = True
-                            break
-
-                    if arp_bug:
-                        yield Rule(rule.match & match(ethtype=ARP_TYPE), [Controller])
-                    else:
-                        yield Rule(rule.match & match(ethtype=ARP_TYPE), rule.actions)
-                else:
-                    yield rule
 
         def bookkeep_buckets(diff_lists):
             """Whenever rules are associated with counting buckets,
@@ -689,67 +807,6 @@ class Runtime(object):
                 new_diff_lists.append(new_lst)
             return new_diff_lists
 
-        def switchify(rules, args):
-            """
-            Specialize rules to a set of switches.  Any rule that doesn't
-            specify a match on switch is turned into a set of rules matching on
-            each switch respectively.
-            
-            :param rules: input rules
-            :type rule: Iterable[Rule]
-            :param switches: the network switches
-            :type switches: set int
-            :returns: output rules
-            :rtype: Iterable[Rule]
-            """
-            switches = args[0]
-            for rule in rules:
-                if isinstance(rule.match, match) and 'switch' in rule.match.map:
-                    if rule.match.map['switch'] in switches:
-                        yield rule
-                else:
-                    for s in switches:
-                        yield Rule(rule.match.intersect(match(switch=s)), rule.actions)
-
-        def concretize(rules):
-            """
-            Convert policies into dictionaries.
-
-            :param rules: input rules
-            :type rules: Iterable[Rule]
-            :returns: output rules
-            :rtype: Iterable[Rule]
-            """
-            def concretize_match(pred):
-                if pred == false:
-                    return None
-                elif pred == true:
-                    return {}
-                elif isinstance(pred, match):
-                    concrete_match = { k:v for (k,v) in list(pred.map.items()) }
-                    net_to_str = util.network_to_string
-                    for field in ['srcip', 'dstip']:
-                        try:
-                            val = net_to_str(concrete_match[field])
-                            concrete_match.update({field: val})
-                        except KeyError:
-                            pass
-                    return concrete_match
-
-            def concretize_action(a):
-                if a == Controller:
-                    return {'outport' : OFPP_CONTROLLER}
-                elif isinstance(a,modify):
-                    return { k:v for (k,v) in a.map.items() }
-                else: # default
-                    return a
-
-            for rule in rules:
-                m = concretize_match(rule.match)
-                acts = [concretize_action(a) for a in rule.actions]
-                if m is not None:
-                    yield Rule(m, acts)
-
         def check_OF_rule(rules):
             def check_OF_rule_has_outport(r):
                 for a in r.actions:
@@ -773,58 +830,6 @@ class Runtime(object):
                 check_OF_rule_has_outport(r_minus_queries)
                 check_OF_rule_has_compilable_action_list(r_minus_queries)
                 yield rule
-
-        def OF_inportize(rules):
-            """
-            Specialize rule to ensure that packets to be forwarded
-            out the inport on which they arrived are handled correctly.
-
-            :param rules: an iterable of rules
-            :type rules: Iterable[Rule]
-            :returns: an iterable of output rules
-            :rtype: Iterable[Rule]
-            """
-            def specialize_actions(actions, outport):
-                new_actions = []
-                for act in actions:
-                    if not isinstance(act, CountBucket):
-                        new_actions.append(copy.deepcopy(act))
-                    else:
-                        new_actions.append(act) # can't make copies of
-                                                # CountBuckets without
-                                                # forking
-                for action in new_actions:
-                    try:
-                        if not isinstance(action, CountBucket):
-                            if action['outport'] == outport:
-                                action['outport'] = OFPP_IN_PORT
-                    except:
-                        raise TypeError  # INVARIANT: every set of actions must go out a port
-                                         # this may not hold when we move to OF 1.3
-                return new_actions
-
-            for rule in rules:
-                phys_actions = [a for a in rule.actions if (not isinstance(a, CountBucket)
-                                                            and a['outport'] != OFPP_CONTROLLER
-                                                            and a['outport'] != OFPP_IN_PORT)]
-                outports_used = [a['outport'] for a in phys_actions]
-                if not 'inport' in rule.match:
-                    # Add a modified rule for each of the outports_used
-                    for outport in outports_used:
-                        new_match = copy.deepcopy(rule.match)
-                        new_match['inport'] = outport
-                        new_actions = specialize_actions(rule.actions, outport)
-                        yield Rule(new_match, new_actions)
-                    # And a default rule for any inport outside the set of outports_used
-                    yield rule
-                else:
-                    if rule.match['inport'] in outports_used:
-                        # Modify the set of actions
-                        new_actions = specialize_actions(rule.actions, rule.match['inport'])
-                        yield Rule(rule.match, new_actions)
-                    else:
-                        # Leave as before
-                        yield rule
 
         ### UPDATE LOGIC
 
@@ -1031,17 +1036,17 @@ class Runtime(object):
         classifier.register_map(OF_inportize)
         classifier.version = curr_version_no
 
-        new_rules = list(classifier.rules_for_install())
-        self.log.debug("Number of rules in classifier: %d" % len(new_rules))
-        diff_lists = get_diff_lists(new_rules)
+        #new_rules = list(classifier.rules_for_install())
+        #self.log.debug("Number of rules in classifier: %d" % len(new_rules))
+        diff_lists = classifier.get_diff_lists()
         bookkeep_buckets(diff_lists)
         diff_lists = remove_buckets(diff_lists)
 
-        self.log.debug('================================')
-        self.log.debug('Final classifier to be installed:')
-        for rule in new_rules:
-            self.log.debug(str(rule))
-        self.log.debug('================================')
+        # self.log.debug('================================')
+        # self.log.debug('Final classifier to be installed:')
+        # for rule in new_rules:
+        #     self.log.debug(str(rule))
+        # self.log.debug('================================')
 
         p = Process(target=f, args=(diff_lists, curr_version_no))
         p.daemon = True
