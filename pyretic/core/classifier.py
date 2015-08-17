@@ -45,11 +45,16 @@ class Rule(object):
         """Based on syntactic equality of policies."""
         return ( id(self) == id(other)
             or ( self.match == other.match
-                 and sorted(self.actions) == sorted(other.actions) ) )
+                 and self.actions == other.actions ) )
 
     def __ne__(self, other):
         """Based on syntactic equality of policies."""
         return not (self == other)
+
+    def __hash__(self):
+        h1 = hash(frozenset(self.match.values()))
+        h2 = hash(frozenset({a['outport'] for a in self.actions}))
+        return h1 ^ h2
 
     def eval(self, in_pkt):
         """
