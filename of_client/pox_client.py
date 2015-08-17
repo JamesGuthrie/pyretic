@@ -424,7 +424,7 @@ class POXClient(revent.EventMixin):
         else:
             inport = None
         match = self.build_of_match(switch,inport,pred)
-        msg = of.ofp_flow_mod(command=of.OFPFC_DELETE,
+        msg = of.ofp_flow_mod(command=of.OFPFC_DELETE_STRICT,
                               priority=priority,
                               match=match)
         try:
