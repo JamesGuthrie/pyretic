@@ -90,7 +90,7 @@ class IPAddr(object):
 
             # byte encoding
             if len(ip) == 4:
-                b.frombytes(ip)
+                b.frombytes(bytes(ip, "utf-8"))
 
             # string encoding
             else:
