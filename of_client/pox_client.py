@@ -30,6 +30,8 @@
 
 import threading
 
+from threading import Lock
+
 import pox.openflow.libopenflow_01 as of
 import pox.openflow.nicira as nx
 from pox.core import core
@@ -66,6 +68,7 @@ class BackendChannel(asynchat.async_chat):
         self.interval = 0
         self.total_interval = 0
         self.num_intervals  = 0
+        self._write_lock = Lock()
         return
 
     def handle_connect(self):
@@ -145,6 +148,12 @@ class BackendChannel(asynchat.async_chat):
         else:
             print "ERROR: Unknown msg from frontend %s" % msg
 
+    def initiate_send(self):
+        # Ensure that we only enter the initiate_send method one at a time.
+        # This is entered by two different threads, without locks. When the switch activity
+        # becomes frequent enough this starts getting pretty racey and falls on its face.
+        with self._write_lock:
+            asynchat.async_chat.initiate_send(self)
 
 class POXClient(revent.EventMixin):
     # NOT **kwargs
