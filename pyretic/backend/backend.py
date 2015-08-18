@@ -139,11 +139,11 @@ class Backend(object):
     def send_packet(self,packet):
         self.send_to_OF_client(['packet',packet])
 
-    def send_install(self,pred,priority,action_list,cookie,notify=False):
-        self.send_to_OF_client(['install',pred,priority,action_list,cookie,notify])
+    def send_install(self,pred,priority,action_list,cookie,notify=False,idle_timeout=0):
+        self.send_to_OF_client(['install',pred,priority,action_list,cookie,notify,idle_timeout])
 
-    def send_modify(self,pred,priority,action_list,cookie,notify=False):
-        self.send_to_OF_client(['modify',pred,priority,action_list,cookie,notify])
+    def send_modify(self,pred,priority,action_list,cookie,notify=False,idle_timeout=0):
+        self.send_to_OF_client(['modify',pred,priority,action_list,cookie,notify,idle_timeout])
 
     def send_delete(self,pred,priority):
         self.send_to_OF_client(['delete',pred,priority])

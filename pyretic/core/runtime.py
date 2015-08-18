@@ -611,19 +611,22 @@ class Runtime(object):
                            TABLE_MISS_PRIORITY,
                            [{'outport' : OFPP_CONTROLLER}],
                            self.default_cookie,
-                           False))
+                           False,
+                           0))
         # Send all LLDP packets to controller for topology maintenance
         self.install_rule(({'switch' : s, 'ethtype': LLDP_TYPE},
                            TABLE_START_PRIORITY + 2,
                            [{'outport' : OFPP_CONTROLLER}],
                            self.default_cookie,
-                           False))
+                           False,
+                           0))
         # Drop all IPv6 packets by default.
         self.install_rule(({'switch':s, 'ethtype':IPV6_TYPE},
                            TABLE_START_PRIORITY + 1,
                            [],
                            self.default_cookie,
-                           False))
+                           False,
+                           0))
 
     def install_classifier(self, classifier):
         """
@@ -981,7 +984,7 @@ class Runtime(object):
 
             if to_delete:
                 for rule in to_delete:
-                    (match_dict,priority,_,_,_) = rule
+                    (match_dict,priority,_,_,_,_) = rule
                     if match_dict['switch'] in switches:
                         self.delete_rule((match_dict, priority))
             if to_add:
@@ -1039,8 +1042,8 @@ class Runtime(object):
         #new_rules = list(classifier.rules_for_install())
         #self.log.debug("Number of rules in classifier: %d" % len(new_rules))
         diff_lists = classifier.get_diff_lists()
-        bookkeep_buckets(diff_lists)
-        diff_lists = remove_buckets(diff_lists)
+        #bookkeep_buckets(diff_lists)
+        #diff_lists = remove_buckets(diff_lists)
 
         # self.log.debug('================================')
         # self.log.debug('Final classifier to be installed:')
@@ -1215,17 +1218,18 @@ class Runtime(object):
         self.backend.send_packet(concrete_packet)
 
     def install_rule(self, xxx_todo_changeme):
-        (concrete_pred,priority,action_list,cookie,notify) = xxx_todo_changeme
+        print("installing rule: {}".format(xxx_todo_changeme))
+        (concrete_pred,priority,action_list,cookie,notify,idle_timeout) = xxx_todo_changeme
         self.log.debug(
             '|%s|\n\t%s\n\t%s\n' % (str(datetime.now()),
                 "sending openflow rule:",
                 (str(priority) + " " + repr(concrete_pred) + " "+
                  repr(action_list) + " " + repr(cookie))))
-        self.backend.send_install(concrete_pred,priority,action_list,cookie,notify)
+        self.backend.send_install(concrete_pred,priority,action_list,cookie,notify,idle_timeout)
 
     def modify_rule(self, xxx_todo_changeme1):
-        (concrete_pred,priority,action_list,cookie,notify) = xxx_todo_changeme1
-        self.backend.send_modify(concrete_pred,priority,action_list,cookie,notify)
+        (concrete_pred,priority,action_list,cookie,notify,idle_timeout) = xxx_todo_changeme1
+        self.backend.send_modify(concrete_pred,priority,action_list,cookie,notify,idle_timeout)
 
     def delete_rule(self, xxx_todo_changeme2):
         (concrete_pred,priority) = xxx_todo_changeme2
@@ -1344,7 +1348,7 @@ class Runtime(object):
                 if not (k == 'srcip' or k == 'dstip'):
                     new_dict[k] = v
                 else:
-                    new_dict[k] = str(v.ip)
+                    new_dict[k] = str(v)
             return new_dict
         flow_stat = { f : self.ofp_convert(f,v)
                       for (f,v) in list(flow_stat_dict.items()) }
@@ -1379,6 +1383,7 @@ class Runtime(object):
                                   id(bucket))
                     bucket.handle_flow_removed(rule_match, priority, version, f)
                 del self.global_outstanding_deletes[match_entry]
+            self.policy.handle_flow_removed(rule_match, priority, version, f)
 
 ################################################################################
 # Topology Transfer and Full Policy Functions

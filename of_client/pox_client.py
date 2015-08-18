@@ -123,10 +123,11 @@ class BackendChannel(asynchat.async_chat):
             actions = map(self.dict2OF,msg[3])
             cookie = int(msg[4])
             notify = bool(msg[5])
+            idle_timeout = int(msg[6])
             if msg[0] == 'install':
-                self.of_client.install_flow(pred,priority,actions,cookie,notify)
+                self.of_client.install_flow(pred,priority,actions,cookie,notify,idle_timeout)
             else:
-                self.of_client.modify_flow(pred,priority,actions,cookie,notify)
+                self.of_client.modify_flow(pred,priority,actions,cookie,notify,idle_timeout)
             self.interval = time.time() - self.start_time
         elif msg[0] == 'delete':
             pred = self.dict2OF(msg[1])
@@ -374,7 +375,7 @@ class POXClient(revent.EventMixin):
                 of_actions.append(of.ofp_action_output(port=outport))
         return of_actions
 
-    def flow_mod_action(self,pred,priority,action_list,cookie,command,notify):
+    def flow_mod_action(self,pred,priority,action_list,cookie,command,notify,idle_timeout):
         switch = pred['switch']
         if 'inport' in pred:        
             inport = pred['inport']
@@ -389,7 +390,7 @@ class POXClient(revent.EventMixin):
         if 'ethtype' in pred and pred['ethtype']==0x86dd:
             msg = nx.nx_flow_mod(command=command,
                                  priority=priority,
-                                 idle_timeout=of.OFP_FLOW_PERMANENT,
+                                 idle_timeout=idle_timeout,
                                  hard_timeout=of.OFP_FLOW_PERMANENT,
                                  match=nx.nx_match(match),
                                  flags=flags,
@@ -398,7 +399,7 @@ class POXClient(revent.EventMixin):
         else:
             msg = of.ofp_flow_mod(command=command,
                                   priority=priority,
-                                  idle_timeout=of.OFP_FLOW_PERMANENT,
+                                  idle_timeout=idle_timeout,
                                   hard_timeout=of.OFP_FLOW_PERMANENT,
                                   match=match,
                                   flags=flags,
@@ -411,11 +412,11 @@ class POXClient(revent.EventMixin):
         except KeyError, e:
             print "WARNING:install_flow: No connection to switch %d available" % switch
 
-    def install_flow(self,pred,priority,action_list,cookie,notify):
-        self.flow_mod_action(pred,priority,action_list,cookie,of.OFPFC_ADD,notify)
+    def install_flow(self,pred,priority,action_list,cookie,notify,idle_timeout):
+        self.flow_mod_action(pred,priority,action_list,cookie,of.OFPFC_ADD,notify,idle_timeout)
 
-    def modify_flow(self,pred,priority,action_list,cookie,notify):
-        self.flow_mod_action(pred,priority,action_list,cookie,of.OFPFC_MODIFY_STRICT,notify)
+    def modify_flow(self,pred,priority,action_list,cookie,notify,idle_timeout):
+        self.flow_mod_action(pred,priority,action_list,cookie,of.OFPFC_MODIFY_STRICT,notify,idle_timeout)
 
     def delete_flow(self,pred,priority):
         switch = pred['switch']
