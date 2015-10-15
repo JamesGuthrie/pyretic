@@ -606,10 +606,10 @@ class Runtime(object):
 
     def install_defaults(self, s):
         """ Install backup rules on switch s by default. """
-        # Fallback "send to controller" rule under table miss
+        # Fallback "drop" rule under table miss
         self.install_rule(({'switch' : s},
                            TABLE_MISS_PRIORITY,
-                           [{'outport' : OFPP_CONTROLLER}],
+                           [],
                            self.default_cookie,
                            False,
                            0))
