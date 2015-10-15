@@ -424,14 +424,14 @@ class Runtime(object):
             self.clear_all() 
 
         elif self.mode == 'proactive0' or self.mode == 'proactive1':
-            classifier = self.policy.compile()
-            self.log.debug(
-                '|%s|\n\t%s\n\t%s\n\t%s\n' % (str(datetime.now()),
-                                              "generate classifier",
-                                              "policy=\n"+repr(self.policy),
-                                              "classifier=\n"+repr(classifier)))
-            self.install_classifier(classifier)
-
+            with self.classifier_lock:
+                classifier = self.policy.compile()
+                self.log.debug(
+                    '|%s|\n\t%s\n\t%s\n\t%s\n' % (str(datetime.now()),
+                                                  "generate classifier",
+                                                  "policy=\n"+repr(self.policy),
+                                                  "classifier=\n"+repr(classifier)))
+                self.install_classifier(classifier)
 
     def update_dynamic_sub_pols(self):
         """
